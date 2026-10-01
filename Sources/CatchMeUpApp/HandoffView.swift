@@ -20,15 +20,15 @@ struct HandoffView: View {
                 if let handoff = store.handoff { resultCard(handoff) }
 
                 HStack {
-                    Text("交接素材").font(.headline)
+                    Text(L.t("交接素材")).font(.headline)
                     Text("\(handoffItems.count)").font(.body).foregroundStyle(.secondary)
                     Spacer()
                     ViewModeToggle(mode: $layout)
                 }
 
                 if handoffItems.isEmpty {
-                    EmptyState(icon: "arrow.left.arrow.right", title: "还没有交接素材",
-                               subtitle: "把项目、目录或工作小结用「交接」模式整理，就会出现在这里")
+                    EmptyState(icon: "arrow.left.arrow.right", title: L.t("还没有交接素材"),
+                               subtitle: L.t("把项目、目录或工作小结用「交接」模式整理，就会出现在这里"))
                         .frame(height: 200)
                 } else if layout == .cards {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 14)], spacing: 14) {
@@ -70,20 +70,20 @@ struct HandoffView: View {
     }
 
     private var controls: some View {
-        Card(title: "操作") {
+        Card(title: L.t("操作")) {
             HStack(spacing: 10) {
                 Button {
                     Task { await store.generateHandoff(extraContext: contextOrNil) }
-                } label: { Label("生成交接摘要", systemImage: "wand.and.stars") }
+                } label: { Label(L.t("生成交接摘要"), systemImage: "wand.and.stars") }
                 .buttonStyle(.borderedProminent)
 
                 Button {
                     Task { await store.startSession(topic: topicOrNil, extraContext: contextOrNil) }
-                } label: { Label("开启新 Session", systemImage: "play.circle") }
+                } label: { Label(L.t("开启新 Session"), systemImage: "play.circle") }
 
                 Button {
                     Task { await store.endSession(extraContext: contextOrNil) }
-                } label: { Label("结束当前 Session", systemImage: "stop.circle") }
+                } label: { Label(L.t("结束当前 Session"), systemImage: "stop.circle") }
                 .disabled(store.activeSession == nil)
 
                 Spacer()
@@ -91,43 +91,43 @@ struct HandoffView: View {
             .buttonStyle(.bordered)
 
             if let session = store.activeSession {
-                Text("当前 Session：\(session.topic ?? "未命名") · 开始于 \(Fmt.full.string(from: session.startedAt))")
+                Text("当前 Session：\(session.topic ?? L.t("未命名")) · 开始于 \(Fmt.full.string(from: session.startedAt))")
                     .font(.body).foregroundStyle(.secondary)
             }
 
-            TextField("Session 主题（可选）", text: $topic)
+            TextField(L.t("Session 主题（可选）"), text: $topic)
                 .textFieldStyle(.roundedBorder)
-            TextField("补充上下文（最近重点 / 卡点 / 背景，可选）", text: $context, axis: .vertical)
+            TextField(L.t("补充上下文（最近重点 / 卡点 / 背景，可选）"), text: $context, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
         }
     }
 
     private func resultCard(_ handoff: HandoffResult) -> some View {
-        Card(title: "最新交接摘要") {
+        Card(title: L.t("最新交接摘要")) {
             if !handoff.goals.isEmpty {
-                labeledList("目标", handoff.goals)
+                labeledList(L.t("目标"), handoff.goals)
             }
             if !handoff.logic.isEmpty {
-                Text("整体逻辑").font(.subheadline.weight(.semibold))
+                Text(L.t("整体逻辑")).font(.subheadline.weight(.semibold))
                 Text(handoff.logic).font(.body).textSelection(.enabled)
             }
             if !handoff.progressSummary.isEmpty {
-                Text("进展").font(.subheadline.weight(.semibold))
+                Text(L.t("进展")).font(.subheadline.weight(.semibold))
                 Text(handoff.progressSummary).font(.body).textSelection(.enabled)
             }
             if !handoff.nextSteps.isEmpty {
-                labeledList("下一步", handoff.nextSteps)
+                labeledList(L.t("下一步"), handoff.nextSteps)
             }
             if !handoff.risks.isEmpty {
-                Text("风险 / 未决问题").font(.subheadline.weight(.semibold))
+                Text(L.t("风险 / 未决问题")).font(.subheadline.weight(.semibold))
                 ForEach(handoff.risks, id: \.self) { risk in
                     Label(risk, systemImage: "exclamationmark.triangle").font(.body).foregroundStyle(.orange)
                 }
             }
             HStack {
                 Spacer()
-                Button { copyHandoff(handoff) } label: { Label("复制为 Markdown", systemImage: "doc.on.doc") }
+                Button { copyHandoff(handoff) } label: { Label(L.t("复制为 Markdown"), systemImage: "doc.on.doc") }
             }
         }
     }
@@ -144,12 +144,12 @@ struct HandoffView: View {
     @ViewBuilder
     private var historySection: some View {
         if !store.sessions.isEmpty {
-            DisclosureGroup("历史 Session（\(store.sessions.count)）", isExpanded: $showingHistory) {
+            DisclosureGroup(L.f("历史 Session（%d）", store.sessions.count), isExpanded: $showingHistory) {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(store.sessions) { session in
                         VStack(alignment: .leading, spacing: 3) {
                             HStack {
-                                Text(session.topic ?? "未命名").font(.body.weight(.medium))
+                                Text(session.topic ?? L.t("未命名")).font(.body.weight(.medium))
                                 StatusPill(status: session.status == .active ? .in_progress : .done)
                                 Spacer()
                                 Text(Fmt.full.string(from: session.startedAt))
@@ -191,6 +191,6 @@ struct HandoffView: View {
         }
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(md, forType: .string)
-        store.setStatus("交接摘要已复制到剪贴板")
+        store.setStatus(L.t("交接摘要已复制到剪贴板"))
     }
 }

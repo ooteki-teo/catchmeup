@@ -8,7 +8,7 @@ struct TasksView: View {
     private enum Tab: String, CaseIterable, Identifiable {
         case tasks, items
         var id: String { rawValue }
-        var title: String { self == .tasks ? "任务" : "按素材" }
+        var title: String { self == .tasks ? L.t("任务") : L.t("按素材") }
     }
 
     @State private var tab: Tab = .tasks
@@ -55,18 +55,18 @@ struct TasksView: View {
             .pickerStyle(.segmented)
             .frame(width: 140)
 
-            TextField("搜索", text: $store.taskSearch)
+            TextField(L.t("搜索"), text: $store.taskSearch)
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 220)
 
             if store.stats.overdue > 0 {
-                Label("\(store.stats.overdue) 条已逾期", systemImage: "exclamationmark.circle.fill")
+                Label(L.f("%d 条已逾期", store.stats.overdue), systemImage: "exclamationmark.circle.fill")
                     .font(.caption).foregroundStyle(.red)
                     .padding(.horizontal, 8).padding(.vertical, 3)
                     .background(Capsule().fill(Color.red.opacity(0.12)))
             }
 
-            Toggle("显示已完成", isOn: $store.taskShowCompleted)
+            Toggle(L.t("显示已完成"), isOn: $store.taskShowCompleted)
                 .toggleStyle(.checkbox)
 
             Spacer()
@@ -74,9 +74,9 @@ struct TasksView: View {
             if tab == .items { ViewModeToggle(mode: $layout) }
 
             Button { showingNew = true } label: {
-                Label("新建", systemImage: "plus")
+                Label(L.t("新建"), systemImage: "plus")
             }
-            .help("新建一条带细节的任务")
+            .help(L.t("新建一条带细节的任务"))
         }
         .padding(12)
     }
@@ -84,13 +84,13 @@ struct TasksView: View {
     @ViewBuilder
     private var itemsContent: some View {
         if itemsWithTasks.isEmpty {
-            EmptyState(icon: "checklist", title: "没有带任务的素材",
-                       subtitle: "捕获含截止时间的内容，任务会挂到对应素材下")
+            EmptyState(icon: "checklist", title: L.t("没有带任务的素材"),
+                       subtitle: L.t("捕获含截止时间的内容，任务会挂到对应素材下"))
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 6) {
-                        Text("相关素材").font(.headline)
+                        Text(L.t("相关素材")).font(.headline)
                         Text("\(itemsWithTasks.count)").font(.caption).foregroundStyle(.secondary)
                         Spacer()
                     }
@@ -128,13 +128,13 @@ enum TaskBucket: Int, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .overdue: return "已逾期"
-        case .today: return "今天"
-        case .tomorrow: return "明天"
-        case .thisWeek: return "本周内"
-        case .later: return "以后"
-        case .noDate: return "无日期"
-        case .done: return "已完成"
+        case .overdue: return L.t("已逾期")
+        case .today: return L.t("今天")
+        case .tomorrow: return L.t("明天")
+        case .thisWeek: return L.t("本周内")
+        case .later: return L.t("以后")
+        case .noDate: return L.t("无日期")
+        case .done: return L.t("已完成")
         }
     }
 
@@ -206,8 +206,8 @@ struct TaskListView: View {
             Divider()
             if grouped.isEmpty {
                 EmptyState(icon: "checklist",
-                           title: store.tasks.isEmpty ? "还没有任务" : "没有匹配的任务",
-                           subtitle: "在上面输入一句话，回车即创建")
+                           title: store.tasks.isEmpty ? L.t("还没有任务") : L.t("没有匹配的任务"),
+                           subtitle: L.t("在上面输入一句话，回车即创建"))
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
@@ -234,7 +234,7 @@ struct TaskListView: View {
     private var quickAdd: some View {
         HStack(spacing: 8) {
             Image(systemName: "plus.circle.fill").foregroundStyle(.secondary)
-            TextField("添加任务，回车即可", text: $newTitle)
+            TextField(L.t("添加任务，回车即可"), text: $newTitle)
                 .textFieldStyle(.plain)
                 .onSubmit {
                     let value = newTitle
@@ -242,7 +242,7 @@ struct TaskListView: View {
                     Task { await store.quickAddTask(value) }
                 }
             if !newTitle.isEmpty {
-                Button("添加") {
+                Button(L.t("添加")) {
                     let value = newTitle
                     newTitle = ""
                     Task { await store.quickAddTask(value) }
@@ -325,19 +325,19 @@ struct TaskLine: View {
                     openWindow(id: "item-detail", value: itemID)
                 } label: { Image(systemName: "tray.full") }
                 .buttonStyle(.borderless)
-                .help("查看来源素材")
+                .help(L.t("查看来源素材"))
             }
 
             Menu {
-                Button("编辑", action: onEdit)
+                Button(L.t("编辑"), action: onEdit)
                 if isDone {
-                    Button("恢复") { Task { await store.reopen(task) } }
+                    Button(L.t("恢复")) { Task { await store.reopen(task) } }
                 } else {
-                    Button("标记完成") { Task { await store.complete(task) } }
-                    Button("取消任务") { Task { await store.cancel(task) } }
+                    Button(L.t("标记完成")) { Task { await store.complete(task) } }
+                    Button(L.t("取消任务")) { Task { await store.cancel(task) } }
                 }
                 Divider()
-                Button("删除", role: .destructive) { Task { await store.delete(task) } }
+                Button(L.t("删除"), role: .destructive) { Task { await store.delete(task) } }
             } label: {
                 Image(systemName: "ellipsis")
             }
@@ -352,16 +352,16 @@ struct TaskLine: View {
 
     private var dueMenu: some View {
         Menu {
-            Button("今天 18:00") { reschedule(QuickDue.today()) }
-            Button("明天 09:00") { reschedule(QuickDue.tomorrow()) }
-            Button("下周一 09:00") { reschedule(QuickDue.nextWeek()) }
-            Button("本周六 10:00") { reschedule(QuickDue.weekend()) }
+            Button(L.t("今天 18:00")) { reschedule(QuickDue.today()) }
+            Button(L.t("明天 09:00")) { reschedule(QuickDue.tomorrow()) }
+            Button(L.t("下周一 09:00")) { reschedule(QuickDue.nextWeek()) }
+            Button(L.t("本周六 10:00")) { reschedule(QuickDue.weekend()) }
             if task.dueAt != nil {
                 Divider()
-                Button("清除日期") { reschedule(nil) }
+                Button(L.t("清除日期")) { reschedule(nil) }
             }
             Divider()
-            Button("自定义…", action: onEdit)
+            Button(L.t("自定义…"), action: onEdit)
         } label: {
             if let due = task.dueAt {
                 Text(Fmt.due(due))
@@ -374,7 +374,7 @@ struct TaskLine: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .help("设置 / 修改截止时间")
+        .help(L.t("设置 / 修改截止时间"))
     }
 
     private var priorityMenu: some View {
@@ -391,7 +391,7 @@ struct TaskLine: View {
         }
         .menuStyle(.borderlessButton)
         .fixedSize()
-        .help("优先级：\(task.priority.label)")
+        .help(L.f("优先级：%@", task.priority.label))
     }
 
     private func reschedule(_ date: Date?) {
@@ -432,16 +432,16 @@ struct TaskEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text(isEditing ? "编辑任务" : "新建任务").font(.headline)
+            Text(isEditing ? L.t("编辑任务") : L.t("新建任务")).font(.headline)
 
-            TextField("任务标题", text: $title)
+            TextField(L.t("任务标题"), text: $title)
                 .textFieldStyle(.roundedBorder)
-            TextField("描述（可选）", text: $detail, axis: .vertical)
+            TextField(L.t("描述（可选）"), text: $detail, axis: .vertical)
                 .textFieldStyle(.roundedBorder)
                 .lineLimit(2...4)
 
             HStack {
-                Toggle("截止时间", isOn: $hasDue)
+                Toggle(L.t("截止时间"), isOn: $hasDue)
                 if hasDue {
                     DatePicker("", selection: $due, displayedComponents: [.date, .hourAndMinute])
                         .labelsHidden()
@@ -454,7 +454,7 @@ struct TaskEditor: View {
             }
 
             HStack(spacing: 10) {
-                Text("优先级").foregroundStyle(.secondary)
+                Text(L.t("优先级")).foregroundStyle(.secondary)
                 Picker("", selection: $priority) {
                     ForEach(TaskPriority.allCases) { Text($0.label).tag($0) }
                 }
@@ -463,17 +463,17 @@ struct TaskEditor: View {
                 Spacer()
             }
 
-            Toggle("同步到系统日历", isOn: $writeToCalendar)
+            Toggle(L.t("同步到系统日历"), isOn: $writeToCalendar)
 
             HStack {
                 if let task {
                     Button(role: .destructive) {
                         Task { await store.delete(task); dismiss() }
-                    } label: { Label("删除", systemImage: "trash") }
+                    } label: { Label(L.t("删除"), systemImage: "trash") }
                 }
                 Spacer()
-                Button("取消") { dismiss() }
-                Button(isEditing ? "保存" : "创建") { save() }
+                Button(L.t("取消")) { dismiss() }
+                Button(isEditing ? L.t("保存") : L.t("创建")) { save() }
                     .buttonStyle(.borderedProminent)
                     .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
             }

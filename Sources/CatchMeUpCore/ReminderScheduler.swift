@@ -46,15 +46,16 @@ public final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate
         center.removePendingNotificationRequests(withIdentifiers: [identifier, "task_\(task.id)"])
 
         let content = UNMutableNotificationContent()
-        content.title = "任务提醒 · \(task.title)"
+        content.title = L.f("任务提醒 · %@", task.title)
         var body = task.detail ?? ""
         if let due = task.dueAt {
             let f = DateFormatter()
             f.locale = Locale(identifier: "zh_CN")
-            f.dateFormat = "M月d日 HH:mm"
-            body += body.isEmpty ? "截止 \(f.string(from: due))" : "\n截止 \(f.string(from: due))"
+            f.dateFormat = L.t("M月d日 HH:mm")
+            let dueText = L.f("截止 %@", f.string(from: due))
+            body += body.isEmpty ? dueText : "\n" + dueText
         }
-        content.body = body.isEmpty ? "该任务即将到期" : body
+        content.body = body.isEmpty ? L.t("该任务即将到期") : body
         content.sound = .default
         content.userInfo = ["taskID": task.id]
 
@@ -92,7 +93,7 @@ public final class ReminderScheduler: NSObject, UNUserNotificationCenterDelegate
         return .distantFuture
     }
 
-    public func sendTest(title: String = "CatchMeUp", body: String = "测试通知") async {
+    public func sendTest(title: String = "CatchMeUp", body: String = L.t("测试通知")) async {
         installDelegate()
         let content = UNMutableNotificationContent()
         content.title = title

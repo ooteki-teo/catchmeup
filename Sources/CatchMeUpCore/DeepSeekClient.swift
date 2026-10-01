@@ -159,7 +159,7 @@ public struct DeepSeekClient: Sendable {
 
                 let (data, response) = try await URLSession.shared.data(for: request)
                 guard let http = response as? HTTPURLResponse else {
-                    throw CatchMeUpError.api("无 HTTP 响应")
+                    throw CatchMeUpError.api(L.t("无 HTTP 响应"))
                 }
                 guard (200..<300).contains(http.statusCode) else {
                     let text = String(data: data, encoding: .utf8) ?? ""
@@ -180,10 +180,10 @@ public struct DeepSeekClient: Sendable {
                 // an exhausted budget yields empty content with finish_reason "length".
                 if choice?.finish_reason == "length", effectiveMaxTokens < 32_000 {
                     effectiveMaxTokens = min(effectiveMaxTokens * 2, 32_000)
-                    lastError = CatchMeUpError.invalidResponse("响应被截断，自动扩容重试")
+                    lastError = CatchMeUpError.invalidResponse(L.t("响应被截断，自动扩容重试"))
                     continue
                 }
-                throw CatchMeUpError.invalidResponse("空响应（finish_reason=\(choice?.finish_reason ?? "unknown")）")
+                throw CatchMeUpError.invalidResponse(L.f("空响应（finish_reason=%@）", choice?.finish_reason ?? "unknown"))
             } catch {
                 lastError = error
                 if attempt < attempts - 1 {
@@ -196,70 +196,16 @@ public struct DeepSeekClient: Sendable {
 
     // MARK: High-level helpers
 
-    public static let organizerSystem = """
-    你是一个中文个人助理，帮用户把碎片化输入（文本、截图、文件、文件夹、网址）整理成结构化条目。
-    你需要同时准备两种产出：
-    A. 任务（tasks）：只提取真正有明确时间点或截止时间的待办，due_at 用 ISO 8601。
-    B. 交接（handoff）：做一次「项目梳理」，让用户（或明天的自己）能连续接手。必须包含：
-       1) goals：这个项目的目标（1-3 条）。
-       2) logic：整体是怎么做的、大致逻辑或结构（1-3 句）。
-       3) progress_summary：详细过程——做过什么、当前进行到哪一步。
-       4) next_steps：结合现有内容（尤其是目录里的文件）推断接下来可能要做什么，3-6 条、可执行。
-       5) risks：卡点或未决问题（没有就空数组）。
-
-    只输出严格 JSON，不要包含任何额外解释：
-    {
-      "title": "一行标题",
-      "summary": "不超过 80 字的摘要",
-      "tags": ["3-5 个中文标签"],
-      "category": "工作/学习/生活/项目/灵感/参考/其他",
-      "tasks": [
-        {"title": "...", "due_at": "2026-01-01T15:00:00", "description": "...", "priority": "normal"}
-      ],
-      "handoff": {
-        "goals": ["..."],
-        "logic": "...",
-        "progress_summary": "...",
-        "next_steps": ["..."],
-        "risks": ["..."]
-      }
-    }
-
-    规则：
-    - due_at 只在有明确时间时填写，否则留空字符串；
-    - 没有待办时 tasks 输出空数组；
-    - 没有可交接内容时 handoff 输出 null；
-    - 项目/代码目录会以「README（若有）+ 目录树（含每个文件的一句话说明）」的形式给出，请据此推断目标、整体逻辑与下一步，不要臆造未出现的内容；
-    - 输入是一个项目/代码目录或工作小结时，必须认真填写 handoff 的五项；
-    - 若用户提供了「上次交接」，请在其基础上做增量更新：保留仍然有效的目标与进展，补上新增/变化的部分，不要整段重写或丢失已有信息。
-    - priority 可选: low | normal | high | urgent。
-    """
-
-    public static let handoffSystem = """
-    你是用户的私人助理，负责写一份「给明天的自己看」的项目交接，用于连续追踪。
-    基于最近捕获的 items、未完成 tasks 和最近的 session，输出严格 JSON，不要客套，不要多余解释：
-    {
-      "goals": ["这个项目的目标（1-3 条）"],
-      "logic": "整体是怎么做的、大致逻辑或结构（1-3 句）",
-      "progress_summary": "详细过程：已做过什么、当前进行到哪一步",
-      "next_steps": ["结合现有内容推断接下来可能要做什么，3-6 条，按优先级排序"],
-      "risks": ["卡点或未决问题（没有就空数组）"]
-    }
-
-    如果信息不足，基于现有数据尽力推断，并在 progress_summary 末尾注明"信息有限，建议补充：…"。
-    如果用户提供了「上次交接」，在其基础上增量更新：保留仍然有效的目标与进展，补充新增/变化，不要丢失已有信息。
-    """
-
     /// Organizer prompt actually used (custom override or built-in default).
     public var resolvedOrganizerSystem: String {
         if let value = organizerPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty { return value }
-        return Self.organizerSystem
+        return L.organizerSystem
     }
 
     /// Hand-off prompt actually used (custom override or built-in default).
     public var resolvedHandoffSystem: String {
         if let value = handoffPrompt?.trimmingCharacters(in: .whitespacesAndNewlines), !value.isEmpty { return value }
-        return Self.handoffSystem
+        return L.handoffSystem
     }
 
     public func organize(kind: ItemKind,
@@ -270,21 +216,18 @@ public struct DeepSeekClient: Sendable {
                          previousHandoff: HandoffResult? = nil,
                          now: Date = Date()) async throws -> OrganizedInput {
         let nowISO = ISO8601DateFormatter.catchMeUp.string(from: now)
-        var block = "# 当前时间: \(nowISO)\n\n# 类型: \(kind.rawValue)\n\n"
+        var block = "# \(L.pNow): \(nowISO)\n\n# \(L.pKind): \(kind.rawValue)\n\n"
         switch intent {
-        case .auto:
-            block += "# 用户意图: 自动判断——需要跟进的截止事项写 tasks；项目/工作进展写 handoff。\n\n"
-        case .task:
-            block += "# 用户意图: 重点抽取带明确时间的待办到 tasks；handoff 可为 null。\n\n"
-        case .handoff:
-            block += "# 用户意图: 这是项目/工作进展，重点生成项目梳理型 handoff（goals / logic / 详细过程 / 接下来要做什么）；tasks 仅在确有截止时间时填写。\n\n"
+        case .auto: block += "# \(L.pIntentAuto)\n\n"
+        case .task: block += "# \(L.pIntentTask)\n\n"
+        case .handoff: block += "# \(L.pIntentHandoff)\n\n"
         }
-        if let hint, !hint.isEmpty { block += "# 用户补充说明: \(hint)\n\n" }
+        if let hint, !hint.isEmpty { block += "# \(L.pHint): \(hint)\n\n" }
         if let previousHandoff, let data = try? JSONEncoder().encode(previousHandoff),
            let json = String(data: data, encoding: .utf8) {
-            block += "# 上次交接（请在此基础上做增量更新，保留有效信息，只补充新增/变化）:\n\(json)\n\n"
+            block += "# \(L.pPrevious):\n\(json)\n\n"
         }
-        block += "# 内容:\n\(content.isEmpty ? "(见随附图片)" : content)"
+        block += "# \(L.pContent):\n\(content.isEmpty ? L.pImageAttached : content)"
 
         let userMessage: ChatMessage
         if let imageData, !imageData.isEmpty {
@@ -331,7 +274,7 @@ public struct DeepSeekClient: Sendable {
         let data = (try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys])) ?? Data()
         var userBlock = String(data: data, encoding: .utf8) ?? "{}"
         if let extraContext, !extraContext.isEmpty {
-            userBlock = "# 用户补充\n\(extraContext)\n\n" + userBlock
+            userBlock = "# \(L.pUserExtra)\n\(extraContext)\n\n" + userBlock
         }
         let raw = try await chat([.system(resolvedHandoffSystem), .user(userBlock)],
                                  temperature: 0.4, maxTokens: 8000)

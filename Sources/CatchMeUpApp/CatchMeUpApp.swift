@@ -11,17 +11,18 @@ struct CatchMeUpApp: App {
         WindowGroup("CatchMeUp") {
             RootView()
                 .environmentObject(store)
+                .id(store.language)
                 .frame(minWidth: 1040, minHeight: 700)
         }
         .commands {
             CommandGroup(replacing: .newItem) {
-                Button("新建任务") { store.selection = .tasks }
+                Button(L.t("新建任务")) { store.selection = .tasks }
                     .keyboardShortcut("n", modifiers: .command)
             }
         }
 
         // Item detail opened as a real macOS window: movable, resizable, closable.
-        WindowGroup("素材详情", id: "item-detail", for: String.self) { $itemID in
+        WindowGroup(L.t("素材详情"), id: "item-detail", for: String.self) { $itemID in
             if let itemID {
                 ItemDetailView(itemID: itemID)
                     .environmentObject(store)
@@ -32,6 +33,7 @@ struct CatchMeUpApp: App {
         MenuBarExtra("CatchMeUp", systemImage: "checklist") {
             MenuBarView()
                 .environmentObject(store)
+                .id(store.language)
         }
         .menuBarExtraStyle(.window)
     }
@@ -47,38 +49,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 // MARK: - Shared formatting
 
 enum Fmt {
-    static let dateTime: DateFormatter = {
+    private static func make(date: DateFormatter.Style, time: DateFormatter.Style) -> DateFormatter {
         let f = DateFormatter()
-        f.locale = Locale(identifier: "zh_CN")
-        f.dateFormat = "M月d日 HH:mm"
+        f.locale = L.locale
+        f.dateStyle = date
+        f.timeStyle = time
         return f
-    }()
+    }
 
-    static let full: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "zh_CN")
-        f.dateFormat = "yyyy-MM-dd HH:mm"
-        return f
-    }()
+    static var dateTime: DateFormatter { make(date: .medium, time: .short) }
+    static var full: DateFormatter { make(date: .short, time: .short) }
 
     static func due(_ date: Date?) -> String {
-        guard let date else { return "无截止时间" }
+        guard let date else { return L.t("无截止时间") }
         let cal = Calendar.current
         let time = DateFormatter()
-        time.locale = Locale(identifier: "zh_CN")
-        time.dateFormat = "HH:mm"
-        if cal.isDateInToday(date) { return "今天 \(time.string(from: date))" }
-        if cal.isDateInTomorrow(date) { return "明天 \(time.string(from: date))" }
-        if cal.isDateInYesterday(date) { return "昨天 \(time.string(from: date))" }
+        time.locale = L.locale
+        time.timeStyle = .short
+        if cal.isDateInToday(date) { return L.f("今天 %@", time.string(from: date)) }
+        if cal.isDateInTomorrow(date) { return L.f("明天 %@", time.string(from: date)) }
+        if cal.isDateInYesterday(date) { return L.f("昨天 %@", time.string(from: date)) }
         return dateTime.string(from: date)
     }
 
     static func relative(_ date: Date) -> String {
         let delta = date.timeIntervalSinceNow
         let absSeconds = abs(delta)
-        if absSeconds < 60 { return delta < 0 ? "已过期" : "即将" }
-        if absSeconds < 3600 { return "\(Int(absSeconds / 60)) 分钟\(delta < 0 ? "前" : "后")" }
-        if absSeconds < 86400 { return "\(Int(absSeconds / 3600)) 小时\(delta < 0 ? "前" : "后")" }
-        return "\(Int(absSeconds / 86400)) 天\(delta < 0 ? "前" : "后")"
+        if absSeconds < 60 { return delta < 0 ? L.t("已过期") : L.t("即将") }
+        if absSeconds < 3600 { return L.f(delta < 0 ? "%d 分钟前" : "%d 分钟后", Int(absSeconds / 60)) }
+        if absSeconds < 86400 { return L.f(delta < 0 ? "%d 小时前" : "%d 小时后", Int(absSeconds / 3600)) }
+        return L.f(delta < 0 ? "%d 天前" : "%d 天后", Int(absSeconds / 86400))
     }
 }

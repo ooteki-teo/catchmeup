@@ -43,7 +43,7 @@ public final class Pipeline {
                                                   imageData: ingested.imageData,
                                                   intent: effectiveIntent)
         } catch {
-            organized = OrganizedInput(summary: "(整理失败：\(error.localizedDescription))")
+            organized = OrganizedInput(summary: L.f("(整理失败：%@)", error.localizedDescription))
         }
 
         var metadata = ingested.metadata
@@ -309,7 +309,7 @@ public final class Pipeline {
     @discardableResult
     public func endSession(_ session: Session, extraContext: String? = nil) async throws -> (Session, HandoffResult) {
         let handoff = (try? await generateHandoff(extraContext: extraContext))
-            ?? HandoffResult(progressSummary: "交接生成失败")
+            ?? HandoffResult(progressSummary: L.t("交接生成失败"))
         var closed = session
         closed.endedAt = Date()
         closed.summary = handoff.progressSummary

@@ -2,6 +2,8 @@
 
 > 原生 macOS 个人任务助理：把截图、文字、文件、文件夹、网址丢进来，自动整理成素材与待办，并帮你记住"上次做到哪、接下来做什么"。
 
+**简体中文** · [English](README.en.md) · [Español](README.es.md) · [日本語](README.ja.md) · [한국어](README.ko.md)
+
 CatchMeUp 是一个**单文件原生 macOS 应用**（SwiftUI + Swift 6），不使用 Electron、不依赖 Python，除 DeepSeek API 外全部在本机完成。
 
 ---
@@ -154,20 +156,6 @@ A：可以。只是不会有到点通知、不会写日历、无法截图；整�
 
 **Q：可以不用 DeepSeek 吗？**
 A：目前整理与交接依赖 DeepSeek API；没有 Key 时仍可手动新建/管理任务。
-
----
-
-## 参与贡献
-
-欢迎提 Issue / PR。开发约定：
-
-```bash
-swift build          # 编译
-swift test           # 跑测试
-bash scripts/build.sh # 打包 .app
-```
-
-提交信息请遵循 [Conventional Commits](https://www.conventionalcommits.org/)。
 
 ---
 

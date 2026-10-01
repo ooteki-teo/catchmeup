@@ -56,7 +56,7 @@ public final class Database: @unchecked Sendable {
     public init(url: URL = AppPaths.databaseURL) throws {
         if sqlite3_open_v2(url.path, &handle, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nil) != SQLITE_OK {
             let msg = handle.flatMap { String(cString: sqlite3_errmsg($0)) } ?? "unknown"
-            throw CatchMeUpError.ingest("无法打开数据库：\(msg)")
+            throw CatchMeUpError.ingest(L.f("无法打开数据库：%@", msg))
         }
         try exec("PRAGMA foreign_keys = ON;")
         try migrate()

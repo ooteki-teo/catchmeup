@@ -9,11 +9,11 @@ public enum ItemKind: String, Codable, CaseIterable, Sendable, Identifiable {
 
     public var label: String {
         switch self {
-        case .text: return "文本"
-        case .screenshot: return "截图"
-        case .file: return "文件"
-        case .folder: return "文件夹"
-        case .url: return "网址"
+        case .text: return L.t("文本")
+        case .screenshot: return L.t("截图")
+        case .file: return L.t("文件")
+        case .folder: return L.t("文件夹")
+        case .url: return L.t("网址")
         }
     }
 }
@@ -25,10 +25,10 @@ public enum TaskStatus: String, Codable, CaseIterable, Sendable, Identifiable {
 
     public var label: String {
         switch self {
-        case .pending: return "待处理"
-        case .in_progress: return "进行中"
-        case .done: return "已完成"
-        case .cancelled: return "已取消"
+        case .pending: return L.t("待处理")
+        case .in_progress: return L.t("进行中")
+        case .done: return L.t("已完成")
+        case .cancelled: return L.t("已取消")
         }
     }
 }
@@ -40,10 +40,10 @@ public enum TaskPriority: String, Codable, CaseIterable, Sendable, Identifiable 
 
     public var label: String {
         switch self {
-        case .low: return "低"
-        case .normal: return "普通"
-        case .high: return "高"
-        case .urgent: return "紧急"
+        case .low: return L.t("低")
+        case .normal: return L.t("普通")
+        case .high: return L.t("高")
+        case .urgent: return L.t("紧急")
         }
     }
 
@@ -64,10 +64,10 @@ public enum Recurrence: String, Codable, CaseIterable, Sendable, Identifiable {
 
     public var label: String {
         switch self {
-        case .none: return "不重复"
-        case .daily: return "每天"
-        case .weekly: return "每周"
-        case .monthly: return "每月"
+        case .none: return L.t("不重复")
+        case .daily: return L.t("每天")
+        case .weekly: return L.t("每周")
+        case .monthly: return L.t("每月")
         }
     }
 }
@@ -217,9 +217,9 @@ public enum IngestIntent: String, Codable, CaseIterable, Sendable, Identifiable 
 
     public var label: String {
         switch self {
-        case .auto: return "自动"
-        case .task: return "任务"
-        case .handoff: return "交接"
+        case .auto: return L.t("自动")
+        case .task: return L.t("任务")
+        case .handoff: return L.t("交接")
         }
     }
 }
@@ -334,11 +334,11 @@ public enum CatchMeUpError: LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .missingAPIKey: return "未配置 DeepSeek API Key，请在设置中填写。"
-        case .api(let msg): return "DeepSeek 接口错误：\(msg)"
-        case .invalidResponse(let msg): return "返回内容无法解析：\(msg)"
-        case .notFound(let what): return "未找到：\(what)"
-        case .ingest(let msg): return "读取失败：\(msg)"
+        case .missingAPIKey: return L.t("未配置 DeepSeek API Key，请在设置中填写。")
+        case .api(let msg): return L.f("DeepSeek 接口错误：%@", msg)
+        case .invalidResponse(let msg): return L.f("返回内容无法解析：%@", msg)
+        case .notFound(let what): return L.f("未找到：%@", what)
+        case .ingest(let msg): return L.f("读取失败：%@", msg)
         }
     }
 }

@@ -27,7 +27,7 @@ struct ComposerView: View {
                 .frame(minHeight: 66, maxHeight: 170)
 
                 if text.isEmpty {
-                    Text("输入文字 / 网址 / 文件路径，或把文件、截图直接拖进来（⌘V 可粘贴截图）")
+                    Text(L.t("输入文字 / 网址 / 文件路径，或把文件、截图直接拖进来（⌘V 可粘贴截图）"))
                         .font(.body)
                         .foregroundStyle(.tertiary)
                         .padding(.leading, 6)
@@ -50,18 +50,18 @@ struct ComposerView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 190)
-                .help("自动：文本/截图→任务，目录→交接 · 任务：抽取截止时间 · 交接：项目梳理")
+                .help(L.t("自动：文本/截图→任务，目录→交接 · 任务：抽取截止时间 · 交接：项目梳理"))
 
                 Menu {
-                    Button("文件…") { chooseFile() }
-                    Button("文件夹…") { chooseFolder() }
-                    Button("图片…") { chooseImage() }
+                    Button(L.t("文件…")) { chooseFile() }
+                    Button(L.t("文件夹…")) { chooseFolder() }
+                    Button(L.t("图片…")) { chooseImage() }
                 } label: {
                     Image(systemName: "paperclip")
                 }
                 .menuStyle(.borderlessButton)
                 .frame(width: 24)
-                .help("添加文件 / 文件夹 / 图片")
+                .help(L.t("添加文件 / 文件夹 / 图片"))
 
                 Button {
                     Task { await store.captureInteractiveScreenshot(hint: hintOrNil, intent: intent) }
@@ -69,19 +69,19 @@ struct ComposerView: View {
                     Image(systemName: "camera.viewfinder")
                 }
                 .buttonStyle(.borderless)
-                .help("框选截图（全局快捷键 \(store.screenshotHotKeyDisplay)）")
+                .help(L.f("框选截图（全局快捷键 %@）", store.screenshotHotKeyDisplay))
 
                 Spacer()
 
                 Button(action: send) {
-                    Label("整理", systemImage: "arrow.up.circle.fill")
+                    Label(L.t("整理"), systemImage: "arrow.up.circle.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(store.isBusy)
             }
 
             if !canSend {
-                TextField("可选：补充说明（帮助 AI 理解上下文）", text: $hint)
+                TextField(L.t("可选：补充说明（帮助 AI 理解上下文）"), text: $hint)
                     .textFieldStyle(.plain)
                     .font(.caption)
                     .foregroundStyle(.secondary)

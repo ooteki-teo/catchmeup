@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import Carbon.HIToolbox
+import CatchMeUpCore
 
 /// Captures a key combination from the user.
 struct HotKeyRecorder: NSViewRepresentable {
@@ -84,7 +85,7 @@ struct HotKeyField: View {
         HStack(spacing: 8) {
             ZStack {
                 HotKeyRecorder(recording: $recording, onCapture: onCapture, onCancel: {})
-                Text(recording ? "请按下组合键（Esc 取消）" : display)
+                Text(recording ? L.t("请按下组合键（Esc 取消）") : display)
                     .font(.body.monospaced())
                     .foregroundStyle(recording ? Color.accentColor : Color.primary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -102,10 +103,10 @@ struct HotKeyField: View {
             .onTapGesture { recording = true }
 
             if recording {
-                Button("取消") { recording = false }
+                Button(L.t("取消")) { recording = false }
             } else {
-                Button("修改") { recording = true }
-                Button("默认", action: onReset)
+                Button(L.t("修改")) { recording = true }
+                Button(L.t("默认"), action: onReset)
             }
         }
     }

@@ -80,6 +80,24 @@ public enum Prefs {
         set { defaults.set(newValue, forKey: "screenshotModifiers") }
     }
 
+    // MARK: Language
+
+    public static var followSystemLanguage: Bool {
+        get { defaults.object(forKey: "followSystemLanguage") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "followSystemLanguage") }
+    }
+
+    public static var languageOverride: String {
+        get { defaults.string(forKey: "languageOverride") ?? AppLanguage.en.rawValue }
+        set { defaults.set(newValue, forKey: "languageOverride") }
+    }
+
+    /// The language currently in effect.
+    public static var language: AppLanguage {
+        if followSystemLanguage { return AppLanguage.systemDefault() }
+        return AppLanguage(rawValue: languageOverride) ?? .en
+    }
+
     /// Custom organizer prompt; empty means "use built-in default".
     public static var organizerPrompt: String {
         get { defaults.string(forKey: "organizerPrompt") ?? "" }

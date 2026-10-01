@@ -8,26 +8,26 @@ struct CalendarView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("未来 30 天的日历日程").foregroundStyle(.secondary)
+                Text(L.t("未来 30 天的日历日程")).foregroundStyle(.secondary)
                 Spacer()
                 if !store.calendarAuthorized {
-                    Button("授权日历访问") { Task { await store.requestCalendarAccess() } }
+                    Button(L.t("授权日历访问")) { Task { await store.requestCalendarAccess() } }
                         .buttonStyle(.borderedProminent)
                 }
                 Button {
                     Task { await store.refresh() }
-                } label: { Label("刷新", systemImage: "arrow.clockwise") }
+                } label: { Label(L.t("刷新"), systemImage: "arrow.clockwise") }
                 Button {
                     NSWorkspace.shared.open(URL(string: "x-apple-calevent://") ?? URL(fileURLWithPath: "/Applications/Calendar.app"))
-                } label: { Label("打开日历", systemImage: "calendar") }
+                } label: { Label(L.t("打开日历"), systemImage: "calendar") }
             }
             .padding(12)
 
             Divider()
 
             if store.calendarEvents.isEmpty {
-                EmptyState(icon: "calendar", title: "暂无日程",
-                           subtitle: store.calendarAuthorized ? "带截止时间的任务会自动写入日历" : "请先授权日历访问")
+                EmptyState(icon: "calendar", title: L.t("暂无日程"),
+                           subtitle: store.calendarAuthorized ? L.t("带截止时间的任务会自动写入日历") : L.t("请先授权日历访问"))
             } else {
                 List(store.calendarEvents) { event in
                     HStack(alignment: .top, spacing: 12) {
@@ -75,12 +75,12 @@ struct JobsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("已调度的本地通知。即使关闭 App，系统仍会按时提醒。")
+                Text(L.t("已调度的本地通知。即使关闭 App，系统仍会按时提醒。"))
                     .foregroundStyle(.secondary)
 
-                Card(title: "待触发的提醒") {
+                Card(title: L.t("待触发的提醒")) {
                     if store.pendingRequests.isEmpty {
-                        Text("暂无调度中的提醒").font(.caption).foregroundStyle(.secondary)
+                        Text(L.t("暂无调度中的提醒")).font(.caption).foregroundStyle(.secondary)
                     } else {
                         ForEach(store.pendingRequests, id: \.identifier) { request in
                             HStack {
@@ -103,20 +103,20 @@ struct JobsView: View {
                     }
                 }
 
-                Card(title: "测试") {
+                Card(title: L.t("测试")) {
                     HStack {
-                        Text("发送一条测试通知（3 秒后）").font(.body)
+                        Text(L.t("发送一条测试通知（3 秒后）")).font(.body)
                         Spacer()
                         Button {
                             Task { await store.sendTestNotification() }
-                        } label: { Label("发送测试通知", systemImage: "bell.badge") }
+                        } label: { Label(L.t("发送测试通知"), systemImage: "bell.badge") }
                     }
                 }
 
-                Card(title: "提醒规则") {
-                    Label("任务设置截止时间后，默认在截止前 \(store.reminderLeadInput) 分钟提醒", systemImage: "clock")
-                    Label("重复任务（每天/每周/每月）会按周期重复提醒", systemImage: "repeat")
-                    Label("可在设置中调整提前量和是否写入日历", systemImage: "gearshape")
+                Card(title: L.t("提醒规则")) {
+                    Label(L.f("任务设置截止时间后，默认在截止前 %d 分钟提醒", store.reminderLeadInput), systemImage: "clock")
+                    Label(L.t("重复任务（每天/每周/每月）会按周期重复提醒"), systemImage: "repeat")
+                    Label(L.t("可在设置中调整提前量和是否写入日历"), systemImage: "gearshape")
                 }
                 .font(.body)
             }

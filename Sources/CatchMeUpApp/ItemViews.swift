@@ -18,7 +18,7 @@ struct ViewModeToggle: View {
         }
         .pickerStyle(.segmented)
         .frame(width: 84)
-        .help("切换卡片 / 列表")
+        .help(L.t("切换卡片 / 列表"))
     }
 }
 
@@ -96,10 +96,10 @@ struct ItemBlockView: View {
                 Divider().frame(height: 76)
                 VStack(alignment: .leading, spacing: 6) {
                     if !tasks.isEmpty {
-                        Text("关联任务").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text(L.t("关联任务")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         taskList(limit: 5)
                     } else if let handoff {
-                        Text("交接").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        Text(L.t("交接")).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                         handoffSnippet(handoff, lines: 5)
                     }
                 }
@@ -116,7 +116,7 @@ struct ItemBlockView: View {
     private var header: some View {
         HStack(spacing: 8) {
             Image(systemName: ItemIcon.name(for: item.kind)).foregroundStyle(.secondary)
-            Text(item.title ?? "(无标题)").font(.body.weight(.medium)).lineLimit(1)
+            Text(item.title ?? L.t("(无标题)")).font(.body.weight(.medium)).lineLimit(1)
             if item.handoff != nil {
                 Image(systemName: "arrow.left.arrow.right").foregroundStyle(.purple)
             }
@@ -129,9 +129,9 @@ struct ItemBlockView: View {
     @ViewBuilder
     private var refreshControls: some View {
         if isRefreshArmed {
-            Button("取消") { onRefreshCancel() }
+            Button(L.t("取消")) { onRefreshCancel() }
                 .controlSize(.small)
-            Button("更新") { onRefreshConfirm() }
+            Button(L.t("更新")) { onRefreshConfirm() }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
         } else {
@@ -141,7 +141,7 @@ struct ItemBlockView: View {
                 Image(systemName: "arrow.clockwise")
             }
             .buttonStyle(.borderless)
-            .help("增量更新这份交接")
+            .help(L.t("增量更新这份交接"))
         }
     }
 
@@ -179,7 +179,7 @@ struct ItemBlockView: View {
                 }
             }
             if tasks.count > limit {
-                Text("… 还有 \(tasks.count - limit) 条").font(.caption).foregroundStyle(.tertiary)
+                Text(L.f("… 还有 %d 条", tasks.count - limit)).font(.caption).foregroundStyle(.tertiary)
             }
         }
     }
@@ -194,7 +194,7 @@ struct ItemBlockView: View {
             }
             ForEach(handoff.nextSteps.prefix(2), id: \.self) { step in
                 HStack(alignment: .top, spacing: 4) {
-                    Text("·").foregroundStyle(.tertiary)
+                    Text(L.t("·")).foregroundStyle(.tertiary)
                     Text(step).font(.body).foregroundStyle(.secondary).lineLimit(1)
                 }
             }

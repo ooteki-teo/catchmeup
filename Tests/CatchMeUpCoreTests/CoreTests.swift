@@ -3,6 +3,37 @@ import XCTest
 
 final class CoreTests: XCTestCase {
 
+    override func setUp() {
+        super.setUp()
+        // Deterministic language for assertions.
+        Prefs.followSystemLanguage = false
+        Prefs.languageOverride = AppLanguage.zh.rawValue
+    }
+
+    // MARK: Localization
+
+    func testLocalizationSwitching() {
+        Prefs.followSystemLanguage = false
+        Prefs.languageOverride = AppLanguage.en.rawValue
+        XCTAssertEqual(L.t("工作台"), "Workspace")
+        XCTAssertEqual(L.t("设置"), "Settings")
+
+        Prefs.languageOverride = AppLanguage.ja.rawValue
+        XCTAssertEqual(L.t("设置"), "設定")
+
+        Prefs.languageOverride = AppLanguage.ko.rawValue
+        XCTAssertEqual(L.t("设置"), "설정")
+
+        Prefs.languageOverride = AppLanguage.es.rawValue
+        XCTAssertEqual(L.t("设置"), "Ajustes")
+
+        Prefs.languageOverride = AppLanguage.zh.rawValue
+        XCTAssertEqual(L.t("工作台"), "工作台")
+
+        // A missing key falls back to the Chinese source.
+        XCTAssertEqual(L.t("不存在的键"), "不存在的键")
+    }
+
     // MARK: JSON parsing
 
     func testJSONExtractorHandlesFencedJSON() {
@@ -289,12 +320,12 @@ final class CoreTests: XCTestCase {
 
     func testCustomPromptOverrideFallsBackWhenBlank() {
         let custom = DeepSeekClient(apiKey: "x", organizerPrompt: "   ", handoffPrompt: "自定义交接")
-        XCTAssertEqual(custom.resolvedOrganizerSystem, DeepSeekClient.organizerSystem)
+        XCTAssertEqual(custom.resolvedOrganizerSystem, L.organizerSystem)
         XCTAssertEqual(custom.resolvedHandoffSystem, "自定义交接")
 
         let defaults = DeepSeekClient(apiKey: "x")
-        XCTAssertEqual(defaults.resolvedOrganizerSystem, DeepSeekClient.organizerSystem)
-        XCTAssertEqual(defaults.resolvedHandoffSystem, DeepSeekClient.handoffSystem)
+        XCTAssertEqual(defaults.resolvedOrganizerSystem, L.organizerSystem)
+        XCTAssertEqual(defaults.resolvedHandoffSystem, L.handoffSystem)
     }
 
     // MARK: Live DeepSeek (only when DEEPSEEK_API_KEY is set)

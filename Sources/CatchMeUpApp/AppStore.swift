@@ -13,12 +13,12 @@ final class AppStore: ObservableObject {
         var id: String { rawValue }
         var title: String {
             switch self {
-            case .workspace: return "工作台"
-            case .tasks: return "任务"
-            case .handoff: return "任务交接"
-            case .calendar: return "日历"
-            case .jobs: return "定时任务"
-            case .settings: return "设置"
+            case .workspace: return L.t("工作台")
+            case .tasks: return L.t("任务")
+            case .handoff: return L.t("任务交接")
+            case .calendar: return L.t("日历")
+            case .jobs: return L.t("定时任务")
+            case .settings: return L.t("设置")
             }
         }
         var icon: String {
@@ -80,6 +80,8 @@ final class AppStore: ObservableObject {
     @Published var notificationStatus: UNAuthorizationStatus = .notDetermined
     @Published var calendarStatus: EKAuthorizationStatus = .notDetermined
     @Published var screenRecordingGranted = false
+    @Published var language: AppLanguage = Prefs.language
+    @Published var followSystemLanguage: Bool = Prefs.followSystemLanguage
 
     let db: Database
     private let scheduler = ReminderScheduler.shared
@@ -89,7 +91,7 @@ final class AppStore: ObservableObject {
         do {
             db = try Database()
         } catch {
-            fatalError("无法初始化数据库：\(error)")
+            fatalError(L.f("无法初始化数据库：%@", "\(error)"))
         }
         scheduler.installDelegate()
         apiKeyInput = Prefs.apiKey ?? ""
@@ -136,12 +138,12 @@ final class AppStore: ObservableObject {
         Prefs.screenshotKeyCode = Int(keyCode)
         Prefs.screenshotModifiers = Int(modifiers)
         if registerGlobalHotKey() {
-            setStatus("截图快捷键已更新为 \(screenshotHotKeyDisplay)")
+            setStatus(L.f("截图快捷键已更新为 %@", screenshotHotKeyDisplay))
         } else {
             Prefs.screenshotKeyCode = oldCode
             Prefs.screenshotModifiers = oldModifiers
             _ = registerGlobalHotKey()
-            errorMessage = "该快捷键可能已被其它 App 占用，已保留原设置"
+            errorMessage = L.t("该快捷键可能已被其它 App 占用，已保留原设置")
         }
     }
 
@@ -149,7 +151,7 @@ final class AppStore: ObservableObject {
         Prefs.screenshotKeyCode = Int(GlobalHotKey.defaultSpec.keyCode)
         Prefs.screenshotModifiers = Int(GlobalHotKey.defaultSpec.modifiers)
         _ = registerGlobalHotKey()
-        setStatus("截图快捷键已恢复默认（\(screenshotHotKeyDisplay)）")
+        setStatus(L.f("截图快捷键已恢复默认（%@）", screenshotHotKeyDisplay))
     }
 
     /// ⌘⇧M: interactive screenshot → bring the app to front → insert and analyze.
@@ -208,7 +210,7 @@ final class AppStore: ObservableObject {
     func resetUsage() {
         UsageTracker.shared.reset()
         usage = UsageTracker.shared.snapshot()
-        setStatus("已重置 Token 统计")
+        setStatus(L.t("已重置 Token 统计"))
     }
 
     func fullItem(id: String) async -> Item? {
@@ -287,13 +289,13 @@ final class AppStore: ObservableObject {
             await submit(string, intent: intent, hint: hint)
             return
         }
-        errorMessage = "剪贴板里没有可识别的内容"
+        errorMessage = L.t("剪贴板里没有可识别的内容")
     }
 
     func captureText(_ text: String, hint: String?, intent: IngestIntent = .task) async {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        await run("正在整理文本…") {
+        await run(L.t("正在整理文本…")) {
             let result = try await self.pipeline.ingest(Ingest.text(trimmed), hint: hint,
                                                         intent: intent, autoExtractTasks: true)
             self.report(result)
@@ -302,7 +304,7 @@ final class AppStore: ObservableObject {
 
     func captureURL(_ urlString: String, hint: String?, intent: IngestIntent = .task) async {
         guard !urlString.isEmpty else { return }
-        await run("正在抓取网页…") {
+        await run(L.t("正在抓取网页…")) {
             let ingested = try await Ingest.url(urlString)
             let result = try await self.pipeline.ingest(ingested, hint: hint,
                                                         intent: intent, autoExtractTasks: true)
@@ -312,11 +314,11 @@ final class AppStore: ObservableObject {
 
     func capturePath(_ path: String, hint: String?, intent: IngestIntent = .auto) async {
         guard !path.isEmpty else { return }
-        await run("正在读取…") {
+        await run(L.t("正在读取…")) {
             let expanded = (path as NSString).expandingTildeInPath
             var isDir: ObjCBool = false
             guard FileManager.default.fileExists(atPath: expanded, isDirectory: &isDir) else {
-                throw CatchMeUpError.ingest("路径不存在：\(path)")
+                throw CatchMeUpError.ingest(L.f("路径不存在：%@", path))
             }
             let ingested: Ingested
             if isDir.boolValue {
@@ -334,7 +336,7 @@ final class AppStore: ObservableObject {
     }
 
     func captureImage(data: Data, name: String, hint: String?, intent: IngestIntent = .auto) async {
-        await run("正在识别图片…") {
+        await run(L.t("正在识别图片…")) {
             let ingested = try Ingest.screenshot(imageData: data, originalName: name)
             let result = try await self.pipeline.ingest(ingested, hint: hint,
                                                         intent: intent, autoExtractTasks: true)
@@ -344,10 +346,10 @@ final class AppStore: ObservableObject {
 
     func captureInteractiveScreenshot(hint: String? = nil, intent: IngestIntent = .auto, activateApp: Bool = false) async {
         let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("catchmeup_\(UUID().uuidString).png")
-        await run("请框选截图区域…") {
+        await run(L.t("请框选截图区域…")) {
             let ok = await Self.runScreencapture(to: tmp)
             guard ok, let data = try? Data(contentsOf: tmp) else {
-                throw CatchMeUpError.ingest("截图已取消")
+                throw CatchMeUpError.ingest(L.t("截图已取消"))
             }
             try? FileManager.default.removeItem(at: tmp)
             let ingested = try Ingest.screenshot(imageData: data, originalName: "screenshot.png")
@@ -364,10 +366,10 @@ final class AppStore: ObservableObject {
     private func report(_ result: Pipeline.IngestResult) {
         let tasks = result.tasks.count
         if let handoff = result.item.handoff {
-            setStatus("已整理「\(result.item.title ?? "未命名")」，含交接；\(tasks) 条待办")
+            setStatus("已整理「\(result.item.title ?? L.t("未命名"))」，含交接；\(tasks) 条待办")
             self.handoff = handoff
         } else {
-            setStatus("已整理「\(result.item.title ?? "未命名")」，生成 \(tasks) 条待办")
+            setStatus("已整理「\(result.item.title ?? L.t("未命名"))」，生成 \(tasks) 条待办")
         }
     }
 
@@ -398,28 +400,28 @@ final class AppStore: ObservableObject {
     // MARK: Task CRUD
 
     func saveTaskWithCalendar(_ task: TaskItem, writeToCalendar: Bool) async {
-        await run("保存任务…") {
+        await run(L.t("保存任务…")) {
             _ = try await self.pipeline.updateTask(task, writeToCalendar: writeToCalendar)
-            self.setStatus("任务已保存")
+            self.setStatus(L.t("任务已保存"))
         }
     }
 
     func newTask(title: String, detail: String?, due: Date?, priority: TaskPriority,
                  recurrence: Recurrence, writeToCalendar: Bool? = nil) async {
         guard !title.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-        await run("创建任务…") {
+        await run(L.t("创建任务…")) {
             _ = try await self.pipeline.createTask(title: title, detail: detail,
                                                    priority: priority, dueAt: due,
                                                    recurrence: recurrence,
                                                    writeToCalendar: writeToCalendar)
-            self.setStatus("任务已创建")
+            self.setStatus(L.t("任务已创建"))
         }
     }
 
     func complete(_ task: TaskItem) async {
         await run(nil) {
             _ = try await self.pipeline.completeTask(task)
-            self.setStatus("已完成「\(task.title)」")
+            self.setStatus(L.f("已完成「%@」", task.title))
         }
     }
 
@@ -429,7 +431,7 @@ final class AppStore: ObservableObject {
         updated.completedAt = nil
         await run(nil) {
             _ = try await self.pipeline.updateTask(updated)
-            self.setStatus("已恢复「\(task.title)」")
+            self.setStatus(L.f("已恢复「%@」", task.title))
         }
     }
 
@@ -439,7 +441,7 @@ final class AppStore: ObservableObject {
         guard !trimmed.isEmpty else { return }
         await run(nil) {
             _ = try await self.pipeline.createTask(title: trimmed)
-            self.setStatus("已添加「\(trimmed)」")
+            self.setStatus(L.f("已添加「%@」", trimmed))
         }
     }
 
@@ -450,7 +452,7 @@ final class AppStore: ObservableObject {
         if date == nil { updated.recurrence = .none }
         await run(nil) {
             _ = try await self.pipeline.updateTask(updated)
-            self.setStatus(date == nil ? "已清除截止时间" : "已改期到 \(Fmt.due(date))")
+            self.setStatus(date == nil ? L.t("已清除截止时间") : "已改期到 \(Fmt.due(date))")
         }
     }
 
@@ -467,63 +469,63 @@ final class AppStore: ObservableObject {
         updated.status = .cancelled
         await run(nil) {
             _ = try await self.pipeline.updateTask(updated)
-            self.setStatus("已取消「\(task.title)」")
+            self.setStatus(L.f("已取消「%@」", task.title))
         }
     }
 
     func delete(_ task: TaskItem) async {
         await run(nil) {
             try self.pipeline.deleteTask(task)
-            self.setStatus("已删除任务")
+            self.setStatus(L.t("已删除任务"))
         }
     }
 
     func delete(_ item: Item) async {
         await run(nil) {
             _ = try self.pipeline.deleteItem(item)
-            self.setStatus("已删除素材及其关联任务")
+            self.setStatus(L.t("已删除素材及其关联任务"))
         }
     }
 
     // MARK: Handoff
 
     func generateHandoff(extraContext: String?) async {
-        await run("正在生成交接摘要…") {
+        await run(L.t("正在生成交接摘要…")) {
             self.handoff = try await self.pipeline.generateHandoff(extraContext: extraContext)
-            self.setStatus("交接摘要已生成")
+            self.setStatus(L.t("交接摘要已生成"))
         }
     }
 
     func refreshHandoff(_ item: Item) async {
-        await run("正在增量更新交接…") {
+        await run(L.t("正在增量更新交接…")) {
             let updated = try await self.pipeline.refreshHandoff(for: item)
             self.handoff = updated.handoff
-            self.setStatus("已更新「\(updated.title ?? "未命名")」的交接")
+            self.setStatus("已更新「\(updated.title ?? L.t("未命名"))」的交接")
         }
     }
 
     /// Refresh a single item from its source (used by the detail window). No confirmation.
     func refreshItem(_ item: Item) async {
-        await run("正在刷新…") {
+        await run(L.t("正在刷新…")) {
             let updated = try await self.pipeline.refreshItem(for: item)
             self.handoff = updated.handoff
-            self.setStatus("已刷新「\(updated.title ?? "未命名")」")
+            self.setStatus("已刷新「\(updated.title ?? L.t("未命名"))」")
         }
     }
 
     func startSession(topic: String?, extraContext: String?) async {
-        await run("开启新 Session…") {
+        await run(L.t("开启新 Session…")) {
             _ = try await self.pipeline.startSession(topic: topic, extraContext: extraContext)
-            self.setStatus("已开启新 Session")
+            self.setStatus(L.t("已开启新 Session"))
         }
     }
 
     func endSession(extraContext: String?) async {
         guard let session = activeSession else { return }
-        await run("结束 Session 并生成交接…") {
+        await run(L.t("结束 Session 并生成交接…")) {
             let (_, handoff) = try await self.pipeline.endSession(session, extraContext: extraContext)
             self.handoff = handoff
-            self.setStatus("Session 已结束")
+            self.setStatus(L.t("Session 已结束"))
         }
     }
 
@@ -537,7 +539,7 @@ final class AppStore: ObservableObject {
         Prefs.writeToCalendar = writeToCalendarInput
         Prefs.organizerPrompt = organizerPromptInput.trimmingCharacters(in: .whitespacesAndNewlines)
         Prefs.handoffPrompt = handoffPromptInput.trimmingCharacters(in: .whitespacesAndNewlines)
-        setStatus("设置已保存")
+        setStatus(L.t("设置已保存"))
     }
 
     // MARK: Permissions (only requested from Settings, never at launch)
@@ -581,17 +583,32 @@ final class AppStore: ObservableObject {
         }
     }
 
+    // MARK: Language
+
+    func setLanguage(_ language: AppLanguage) {
+        Prefs.followSystemLanguage = false
+        Prefs.languageOverride = language.rawValue
+        followSystemLanguage = false
+        self.language = Prefs.language
+    }
+
+    func setFollowSystemLanguage(_ follow: Bool) {
+        Prefs.followSystemLanguage = follow
+        followSystemLanguage = follow
+        language = Prefs.language
+    }
+
     func sendTestNotification() async {
         await scheduler.sendTest()
-        setStatus("测试通知将在 3 秒后弹出")
+        setStatus(L.t("测试通知将在 3 秒后弹出"))
     }
 
     func testConnection() async {
-        await run("测试 DeepSeek 连接…") {
-            _ = try await self.client.chat([.user("只回复两个字：正常")],
+        await run(L.t("测试 DeepSeek 连接…")) {
+            _ = try await self.client.chat([.user(L.t("只回复两个字：正常"))],
                                            temperature: 0, maxTokens: 512,
                                            jsonMode: false, attempts: 2)
-            self.setStatus("DeepSeek 连接正常（\(Prefs.model)）")
+            self.setStatus(L.f("DeepSeek 连接正常（%@）", Prefs.model))
         }
     }
 
@@ -622,7 +639,7 @@ struct EKEventSummary: Identifiable {
 
     init(_ event: EKEvent) {
         id = event.eventIdentifier ?? UUID().uuidString
-        title = event.title ?? "(无标题)"
+        title = event.title ?? L.t("(无标题)")
         start = event.startDate ?? Date()
         end = event.endDate ?? Date()
         calendarName = event.calendar?.title ?? ""

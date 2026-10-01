@@ -48,14 +48,14 @@ public enum Ingest {
 
     public static func url(_ urlString: String) async throws -> Ingested {
         guard let url = URL(string: urlString), url.scheme != nil, url.host != nil else {
-            throw CatchMeUpError.ingest("无效网址：\(urlString)")
+            throw CatchMeUpError.ingest(L.f("无效网址：%@", urlString))
         }
         var request = URLRequest(url: url)
         request.timeoutInterval = 30
         request.setValue("CatchMeUp/0.1", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
-            throw CatchMeUpError.ingest("抓取失败，状态码 \((response as? HTTPURLResponse)?.statusCode ?? -1)")
+            throw CatchMeUpError.ingest(L.f("抓取失败，状态码 %d", (response as? HTTPURLResponse)?.statusCode ?? -1))
         }
         let html = String(data: data, encoding: .utf8) ?? ""
         let title = extractTitle(html) ?? url.host ?? urlString
@@ -97,7 +97,7 @@ public enum Ingest {
     public static func file(_ path: String) throws -> Ingested {
         let src = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
         guard FileManager.default.fileExists(atPath: src.path) else {
-            throw CatchMeUpError.ingest("文件不存在：\(path)")
+            throw CatchMeUpError.ingest(L.f("文件不存在：%@", path))
         }
         let suffix = src.pathExtension.lowercased()
         let saved = try saveToStorage(src, subdir: "files")
@@ -161,7 +161,7 @@ public enum Ingest {
         let src = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: src.path, isDirectory: &isDir), isDir.boolValue else {
-            throw CatchMeUpError.ingest("文件夹不存在：\(path)")
+            throw CatchMeUpError.ingest(L.f("文件夹不存在：%@", path))
         }
 
         var state = TreeState(maxFiles: maxFiles, maxLines: maxLines)
@@ -185,7 +185,7 @@ public enum Ingest {
             }
         }
 
-        sections.append("\n# 目录结构\n" + (state.lines.isEmpty ? "(空)" : state.lines.joined(separator: "\n")))
+        sections.append("\n# 目录结构\n" + (state.lines.isEmpty ? L.t("(空)") : state.lines.joined(separator: "\n")))
         return Ingested(kind: .folder, rawContent: sections.joined(separator: "\n"),
                         titleHint: src.lastPathComponent, metadata: metadata)
     }
@@ -209,7 +209,7 @@ public enum Ingest {
 
         for (index, entry) in entries.enumerated() {
             if state.lines.count >= state.maxLines {
-                state.lines.append(indent + "└── …（更多省略）")
+                state.lines.append(indent + L.t("└── …（更多省略）"))
                 return
             }
             let isLast = index == entries.count - 1
@@ -281,7 +281,7 @@ public enum Ingest {
     public static func screenshot(path: String) throws -> Ingested {
         let src = URL(fileURLWithPath: (path as NSString).expandingTildeInPath)
         guard let data = try? Data(contentsOf: src) else {
-            throw CatchMeUpError.ingest("无法读取图片：\(path)")
+            throw CatchMeUpError.ingest(L.f("无法读取图片：%@", path))
         }
         return try screenshot(imageData: data, originalName: src.lastPathComponent)
     }

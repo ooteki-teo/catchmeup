@@ -32,8 +32,8 @@ struct WorkspaceView: View {
             itemsToolbar
 
             if filteredItems.isEmpty {
-                EmptyState(icon: "square.stack", title: store.items.isEmpty ? "还没有素材" : "没有匹配的素材",
-                           subtitle: store.items.isEmpty ? "在上面输入、粘贴或拖入内容开始" : "换个关键词试试")
+                EmptyState(icon: "square.stack", title: store.items.isEmpty ? L.t("还没有素材") : L.t("没有匹配的素材"),
+                           subtitle: store.items.isEmpty ? L.t("在上面输入、粘贴或拖入内容开始") : L.t("换个关键词试试"))
             } else {
                 ScrollView {
                     if layout == .cards {
@@ -66,12 +66,12 @@ struct WorkspaceView: View {
     private var statsStrip: some View {
         HStack(spacing: 8) {
             if store.stats.overdue > 0 {
-                statPill("已逾期", store.stats.overdue, .red)
+                statPill(L.t("已逾期"), store.stats.overdue, .red)
             }
-            statPill("未完成", store.stats.open, .blue)
-            statPill("今日到期", store.stats.dueToday, .orange)
-            statPill("近 7 天", store.stats.dueWeek, .purple)
-            statPill("素材", store.stats.items, .green)
+            statPill(L.t("未完成"), store.stats.open, .blue)
+            statPill(L.t("今日到期"), store.stats.dueToday, .orange)
+            statPill(L.t("近 7 天"), store.stats.dueWeek, .purple)
+            statPill(L.t("素材"), store.stats.items, .green)
             Spacer()
         }
     }
@@ -89,17 +89,17 @@ struct WorkspaceView: View {
     private var itemsToolbar: some View {
         HStack(spacing: 8) {
             Picker("", selection: $store.itemKindFilter) {
-                Text("全部").tag(ItemKind?.none)
+                Text(L.t("全部")).tag(ItemKind?.none)
                 ForEach(ItemKind.allCases) { Text($0.label).tag(ItemKind?.some($0)) }
             }
             .frame(width: 110)
 
-            TextField("搜索素材", text: $store.itemSearch)
+            TextField(L.t("搜索素材"), text: $store.itemSearch)
                 .textFieldStyle(.roundedBorder)
                 .frame(maxWidth: 240)
 
             Spacer()
-            Text("\(filteredItems.count) 条").font(.caption).foregroundStyle(.secondary)
+            Text(L.f("%d 条", filteredItems.count)).font(.caption).foregroundStyle(.secondary)
             ViewModeToggle(mode: $layout)
         }
         .padding(.horizontal, 16)
@@ -122,18 +122,18 @@ struct ItemDetailView: View {
                     header(item)
                     TagChips(tags: item.tags)
                     if let summary = item.summary, !summary.isEmpty {
-                        Card(title: "摘要") { Text(summary).font(.body) }
+                        Card(title: L.t("摘要")) { Text(summary).font(.body) }
                     }
                     if let handoff = item.handoff { handoffCard(handoff) }
                     if !linkedTasks.isEmpty {
-                        Card(title: "关联任务") {
+                        Card(title: L.t("关联任务")) {
                             ForEach(linkedTasks) { task in
                                 TaskRowCompact(task: task)
                             }
                         }
                     }
                     if let content = item.rawContent, !content.isEmpty {
-                        Card(title: "原始内容") {
+                        Card(title: L.t("原始内容")) {
                             Text(content)
                                 .font(.system(.body, design: .monospaced))
                                 .textSelection(.enabled)
@@ -141,11 +141,11 @@ struct ItemDetailView: View {
                         }
                     }
                     if let path = item.sourcePath {
-                        Card(title: "本地文件") {
+                        Card(title: L.t("本地文件")) {
                             HStack {
                                 Text(path).font(.caption).textSelection(.enabled)
                                 Spacer()
-                                Button("在访达中显示") {
+                                Button(L.t("在访达中显示")) {
                                     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
                                 }
                             }
@@ -166,7 +166,7 @@ struct ItemDetailView: View {
     private func header(_ item: Item) -> some View {
         HStack(alignment: .top) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(item.title ?? "(无标题)").font(.title2.bold())
+                Text(item.title ?? L.t("(无标题)")).font(.title2.bold())
                 HStack(spacing: 8) {
                     Label(item.kind.label, systemImage: "tag")
                     if let category = item.category, !category.isEmpty { Text(category) }
@@ -182,21 +182,21 @@ struct ItemDetailView: View {
                         await reload()
                     }
                 } label: {
-                    Label("刷新", systemImage: "arrow.clockwise")
+                    Label(L.t("刷新"), systemImage: "arrow.clockwise")
                 }
                 .disabled(store.isBusy)
-                .help("根据来源内容重新分析这条素材")
+                .help(L.t("根据来源内容重新分析这条素材"))
 
                 Button(role: .destructive) {
                     Task {
                         await store.delete(item)
                         NSApp.keyWindow?.close()
                     }
-                } label: { Label("删除", systemImage: "trash") }
+                } label: { Label(L.t("删除"), systemImage: "trash") }
 
                 Button {
                     NSApp.keyWindow?.close()
-                } label: { Label("关闭", systemImage: "xmark.circle") }
+                } label: { Label(L.t("关闭"), systemImage: "xmark.circle") }
                 .keyboardShortcut(.cancelAction)
             }
         }
@@ -207,33 +207,33 @@ struct ItemDetailView: View {
     }
 
     private func handoffCard(_ handoff: HandoffResult) -> some View {
-        Card(title: "交接") {
+        Card(title: L.t("交接")) {
             if !handoff.goals.isEmpty {
-                Text("目标").font(.subheadline.weight(.semibold))
+                Text(L.t("目标")).font(.subheadline.weight(.semibold))
                 ForEach(Array(handoff.goals.enumerated()), id: \.offset) { idx, goal in
                     Text("\(idx + 1). \(goal)").font(.body)
                 }
                 Divider()
             }
             if !handoff.logic.isEmpty {
-                Text("整体逻辑").font(.subheadline.weight(.semibold))
+                Text(L.t("整体逻辑")).font(.subheadline.weight(.semibold))
                 Text(handoff.logic).font(.body).textSelection(.enabled)
                 Divider()
             }
             if !handoff.progressSummary.isEmpty {
-                Text("进展").font(.subheadline.weight(.semibold))
+                Text(L.t("进展")).font(.subheadline.weight(.semibold))
                 Text(handoff.progressSummary).font(.body).textSelection(.enabled)
             }
             if !handoff.nextSteps.isEmpty {
                 Divider()
-                Text("下一步").font(.subheadline.weight(.semibold))
+                Text(L.t("下一步")).font(.subheadline.weight(.semibold))
                 ForEach(Array(handoff.nextSteps.enumerated()), id: \.offset) { idx, step in
                     Text("\(idx + 1). \(step)").font(.body)
                 }
             }
             if !handoff.risks.isEmpty {
                 Divider()
-                Text("风险").font(.subheadline.weight(.semibold))
+                Text(L.t("风险")).font(.subheadline.weight(.semibold))
                 ForEach(handoff.risks, id: \.self) { risk in
                     Label(risk, systemImage: "exclamationmark.triangle").font(.body).foregroundStyle(.orange)
                 }

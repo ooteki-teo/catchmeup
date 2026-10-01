@@ -53,9 +53,9 @@ struct RootView: View {
 
     private var healthFooter: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HealthRow(label: "DeepSeek", ok: !(Prefs.apiKey ?? "").isEmpty, okText: Prefs.model, badText: "未配置 Key")
-            HealthRow(label: "通知", ok: store.notificationsAuthorized, okText: "已授权", badText: "未授权")
-            HealthRow(label: "日历", ok: store.calendarAuthorized, okText: "已授权", badText: "未授权")
+            HealthRow(label: "DeepSeek", ok: !(Prefs.apiKey ?? "").isEmpty, okText: Prefs.model, badText: L.t("未配置 Key"))
+            HealthRow(label: L.t("通知"), ok: store.notificationsAuthorized, okText: L.t("已授权"), badText: L.t("未授权"))
+            HealthRow(label: L.t("日历"), ok: store.calendarAuthorized, okText: L.t("已授权"), badText: L.t("未授权"))
         }
         .padding(12)
     }
@@ -109,27 +109,27 @@ struct MenuBarView: View {
             }
 
             HStack {
-                TextField("记点什么…", text: $quickText)
+                TextField(L.t("记点什么…"), text: $quickText)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(submit)
-                Button("整理", action: submit).disabled(quickText.isEmpty)
+                Button(L.t("整理"), action: submit).disabled(quickText.isEmpty)
             }
 
             HStack {
                 Button {
                     Task { await store.captureInteractiveScreenshot(intent: .auto) }
-                } label: { Label("截图", systemImage: "camera.viewfinder") }
+                } label: { Label(L.t("截图"), systemImage: "camera.viewfinder") }
                 Button {
                     Task { await store.submitClipboard(intent: .auto) }
-                } label: { Label("剪贴板", systemImage: "doc.on.clipboard") }
+                } label: { Label(L.t("剪贴板"), systemImage: "doc.on.clipboard") }
             }
             .buttonStyle(.bordered)
 
             Divider()
 
-            Text("即将到期").font(.caption).foregroundStyle(.secondary)
+            Text(L.t("即将到期")).font(.caption).foregroundStyle(.secondary)
             if upcoming.isEmpty {
-                Text("暂无带截止时间的任务").font(.caption2).foregroundStyle(.tertiary)
+                Text(L.t("暂无带截止时间的任务")).font(.caption2).foregroundStyle(.tertiary)
             } else {
                 ForEach(upcoming) { task in
                     HStack {
@@ -144,10 +144,10 @@ struct MenuBarView: View {
             Divider()
             Button {
                 NSApp.activate(ignoringOtherApps: true)
-            } label: { Label("打开主窗口", systemImage: "macwindow") }
+            } label: { Label(L.t("打开主窗口"), systemImage: "macwindow") }
             Button(role: .destructive) {
                 NSApp.terminate(nil)
-            } label: { Label("退出", systemImage: "power") }
+            } label: { Label(L.t("退出"), systemImage: "power") }
         }
         .padding(14)
         .frame(width: 320)
