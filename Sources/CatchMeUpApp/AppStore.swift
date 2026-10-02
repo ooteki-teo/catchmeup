@@ -9,11 +9,12 @@ import CatchMeUpCore
 @MainActor
 final class AppStore: ObservableObject {
     enum Section: String, CaseIterable, Identifiable {
-        case workspace, tasks, handoff, calendar, jobs, settings
+        case workspace, todos, tasks, handoff, calendar, jobs, settings
         var id: String { rawValue }
         var title: String {
             switch self {
             case .workspace: return L.t("工作台")
+            case .todos: return L.t("待办")
             case .tasks: return L.t("任务")
             case .handoff: return L.t("任务交接")
             case .calendar: return L.t("日历")
@@ -24,6 +25,7 @@ final class AppStore: ObservableObject {
         var icon: String {
             switch self {
             case .workspace: return "square.and.pencil"
+            case .todos: return "checkmark.square"
             case .tasks: return "checklist"
             case .handoff: return "arrow.left.arrow.right"
             case .calendar: return "calendar"
@@ -44,6 +46,10 @@ final class AppStore: ObservableObject {
     @Published var calendarEvents: [EKEventSummary] = []
     @Published var usage = UsageStats()
     @Published var handoff: HandoffResult?
+    @Published var todos: [Todo] = []
+    @Published var todoSuggestions: [SuggestedTodo] = []
+    @Published var todoSuggestionTasks: [TaskItem] = []
+    @Published var todoSuggestionsBusy = false
     @Published var isBusy = false
     @Published var statusMessage: String?
 
@@ -68,9 +74,10 @@ final class AppStore: ObservableObject {
     @Published var taskShowCompleted = false
 
     // Settings
+    @Published var providerInput: AIProviderKind = AIProviderSettings.kind
     @Published var apiKeyInput = ""
-    @Published var modelInput = Prefs.model
-    @Published var baseURLInput = Prefs.baseURL
+    @Published var modelInput = ""
+    @Published var baseURLInput = ""
     @Published var reminderLeadInput = Prefs.reminderLeadMinutes
     @Published var writeToCalendarInput = Prefs.writeToCalendar
     @Published var organizerPromptInput = Prefs.organizerPrompt
@@ -94,16 +101,28 @@ final class AppStore: ObservableObject {
             fatalError(L.f("无法初始化数据库：%@", "\(error)"))
         }
         scheduler.installDelegate()
-        apiKeyInput = Prefs.apiKey ?? ""
+        loadProviderFields(AIProviderSettings.kind)
         Task { await bootstrap() }
     }
 
-    var client: DeepSeekClient {
-        DeepSeekClient(apiKey: Prefs.apiKey ?? "",
-                       baseURL: URL(string: Prefs.baseURL) ?? URL(string: "https://api.deepseek.com")!,
-                       model: Prefs.model,
-                       organizerPrompt: Prefs.organizerPrompt,
-                       handoffPrompt: Prefs.handoffPrompt)
+    var client: AIClient {
+        AIProviderSettings.makeClient(organizerPrompt: Prefs.organizerPrompt,
+                                      handoffPrompt: Prefs.handoffPrompt)
+    }
+
+    /// Load the per-provider key/model/base URL into the editable fields.
+    func loadProviderFields(_ kind: AIProviderKind) {
+        providerInput = kind
+        apiKeyInput = AIProviderSettings.apiKey(for: kind) ?? ""
+        modelInput = AIProviderSettings.model(for: kind)
+        baseURLInput = AIProviderSettings.baseURL(for: kind)
+    }
+
+    var providerNeedsAPIKey: Bool { providerInput.requiresAPIKey }
+
+    var aiConfigured: Bool {
+        let kind = AIProviderSettings.kind
+        return !kind.requiresAPIKey || !(AIProviderSettings.apiKey(for: kind) ?? "").isEmpty
     }
 
     private var pipeline: Pipeline {
@@ -175,6 +194,7 @@ final class AppStore: ObservableObject {
     private struct Loaded: Sendable {
         var items: [Item]
         var tasks: [TaskItem]
+        var todos: [Todo]
         var sessions: [Session]
         var active: Session?
         var stats: Pipeline.Stats
@@ -187,6 +207,7 @@ final class AppStore: ObservableObject {
             do {
                 return Loaded(items: try db.itemSummaries(limit: 500),
                               tasks: try db.tasks(includeCompleted: includeCompleted, limit: 500),
+                              todos: try db.todos(),
                               sessions: try db.sessions(),
                               active: try db.activeSession(),
                               stats: try Pipeline.stats(db: db))
@@ -198,6 +219,7 @@ final class AppStore: ObservableObject {
         if let loaded {
             items = loaded.items
             tasks = loaded.tasks
+            todos = loaded.todos
             sessions = loaded.sessions
             activeSession = loaded.active
             stats = loaded.stats
@@ -473,6 +495,92 @@ final class AppStore: ObservableObject {
         }
     }
 
+    // MARK: Todos
+
+    /// Today's todos plus unfinished items carried over from earlier days.
+    var activeTodos: [Todo] {
+        todos.filter { $0.isToday || !$0.isDone }
+    }
+
+    func quickAddTodo(_ title: String, taskID: String? = nil) async {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        await run(nil) {
+            _ = try self.pipeline.createTodo(title: trimmed, taskID: taskID)
+            self.setStatus(L.f("已添加「%@」", trimmed))
+        }
+    }
+
+    func toggleTodo(_ todo: Todo) async {
+        var updated = todo
+        updated.isDone.toggle()
+        let linkedTask = todo.taskID.flatMap { id in tasks.first { $0.id == id } }
+        await run(nil) {
+            try self.pipeline.updateTodo(updated)
+            if let task = linkedTask {
+                if updated.isDone && task.status != .done {
+                    _ = try await self.pipeline.completeTask(task)
+                } else if !updated.isDone && task.status == .done {
+                    var reopened = task
+                    reopened.status = .pending
+                    reopened.completedAt = nil
+                    _ = try await self.pipeline.updateTask(reopened)
+                }
+            }
+        }
+    }
+
+    func deleteTodo(_ todo: Todo) async {
+        await run(nil) {
+            try self.pipeline.deleteTodo(todo)
+            self.setStatus(L.t("已删除待办"))
+        }
+    }
+
+    func bindTodo(_ todo: Todo, to task: TaskItem?) async {
+        var updated = todo
+        updated.taskID = task?.id
+        await run(nil) {
+            try self.pipeline.updateTodo(updated)
+            self.setStatus(task.map { L.f("已绑定到「%@」", $0.title) } ?? L.t("已解除绑定"))
+        }
+    }
+
+    func generateTodos() async {
+        await run(L.t("正在生成今日待办…")) {
+            let result = try await self.pipeline.suggestTodos(existing: self.activeTodos)
+            self.todoSuggestions = result.suggestions
+            self.todoSuggestionTasks = result.tasks
+            self.setStatus(result.suggestions.isEmpty ? L.t("暂无推荐")
+                                                      : L.f("已生成 %d 条推荐", result.suggestions.count))
+        }
+    }
+
+    func acceptTodoSuggestion(_ suggestion: SuggestedTodo) async {
+        let tasks = todoSuggestionTasks
+        let taskID: String? = suggestion.taskIndex.flatMap { (0..<tasks.count).contains($0) ? tasks[$0].id : nil }
+        await run(nil) {
+            _ = try self.pipeline.createTodo(title: suggestion.title, detail: suggestion.detail,
+                                             source: .ai, taskID: taskID)
+        }
+        todoSuggestions.removeAll { $0.title == suggestion.title }
+    }
+
+    func acceptAllTodoSuggestions() async {
+        let tasks = todoSuggestionTasks
+        let pending = todoSuggestions
+        await run(nil) {
+            for suggestion in pending {
+                let taskID: String? = suggestion.taskIndex.flatMap { (0..<tasks.count).contains($0) ? tasks[$0].id : nil }
+                _ = try self.pipeline.createTodo(title: suggestion.title, detail: suggestion.detail,
+                                                 source: .ai, taskID: taskID)
+            }
+        }
+        todoSuggestions = []
+    }
+
+    func dismissTodoSuggestions() { todoSuggestions = [] }
+
     func delete(_ task: TaskItem) async {
         await run(nil) {
             try self.pipeline.deleteTask(task)
@@ -532,9 +640,10 @@ final class AppStore: ObservableObject {
     // MARK: Settings
 
     func saveSettings() {
-        Prefs.setAPIKey(apiKeyInput)
-        Prefs.model = modelInput
-        Prefs.baseURL = baseURLInput
+        AIProviderSettings.kind = providerInput
+        AIProviderSettings.setAPIKey(apiKeyInput, for: providerInput)
+        AIProviderSettings.setModel(modelInput, for: providerInput)
+        AIProviderSettings.setBaseURL(baseURLInput, for: providerInput)
         Prefs.reminderLeadMinutes = reminderLeadInput
         Prefs.writeToCalendar = writeToCalendarInput
         Prefs.organizerPrompt = organizerPromptInput.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -608,7 +717,7 @@ final class AppStore: ObservableObject {
             _ = try await self.client.chat([.user(L.t("只回复两个字：正常"))],
                                            temperature: 0, maxTokens: 512,
                                            jsonMode: false, attempts: 2)
-            self.setStatus(L.f("DeepSeek 连接正常（%@）", Prefs.model))
+            self.setStatus(L.f("连接正常（%@）", "\(self.providerInput.displayName) · \(self.modelInput)"))
         }
     }
 

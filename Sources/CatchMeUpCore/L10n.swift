@@ -201,6 +201,36 @@ public enum L {
     public static var pImageAttached: String { current == .zh ? "(见随附图片)" : "(see attached image)" }
     public static var pUserExtra: String { current == .zh ? "用户补充" : "User context" }
 
+    // MARK: Todo suggestions
+
+    private static let todoSystemZH = """
+    你是用户的每日待办助理。基于用户的未完成任务和最近的项目交接，为今天推荐 3-6 条具体、可执行的待办。
+    只输出严格 JSON，不要额外解释：
+    {"todos":[{"title":"...","detail":"...可选","task_index":0}]}
+    规则：
+    - title 要短、可执行（动词开头）；
+    - 不要和「已有待办」重复；
+    - 若某条对应某个未完成任务，task_index 填该任务在列表中的序号（从 0 开始），否则省略 task_index。
+    """
+
+    private static let todoSystemEN = """
+    You are the user's daily to-do assistant. Based on the user's open tasks and recent project handoffs, suggest 3-6 concrete, actionable todos for today.
+    Output STRICT JSON only, no extra text:
+    {"todos":[{"title":"...","detail":"...optional","task_index":0}]}
+    Rules:
+    - keep titles short and action-oriented (start with a verb);
+    - do not duplicate items already in "Existing todos";
+    - if a todo corresponds to an open task, set task_index to its 0-based index in the list; otherwise omit task_index.
+    """
+
+    public static var todoSystem: String {
+        current == .zh ? todoSystemZH
+            : todoSystemEN + "\n\nWrite every todo title and detail in \(languageName)."
+    }
+    public static var todoTasksLabel: String { current == .zh ? "未完成任务" : "Open tasks" }
+    public static var todoHandoffsLabel: String { current == .zh ? "项目交接（下一步）" : "Project handoffs (next steps)" }
+    public static var todoExistingLabel: String { current == .zh ? "已有待办（不要重复）" : "Existing todos (do not duplicate)" }
+
     private static func table(for language: AppLanguage) -> [String: String] {
         switch language {
         case .zh: return [:]
@@ -302,6 +332,9 @@ public enum L {
         "截图": "Screenshot", "文件": "File", "文件夹": "Folder",
         "网址": "URL",
         "任务提醒 · %@": "Task reminder · %@", "(整理失败：%@)": "(Organize failed: %@)", "%d 条已逾期": "%d overdue", "框选截图（全局快捷键 %@）": "Capture screen region (⌘⇧M → %@)", "%d 条": "%d items", "… 还有 %d 条": "…and %d more", "%d 次 · %@ tokens": "%d calls · %@ tokens",
+        "连接正常（%@）": "Connected (%@)",
+        "AI 提供商": "AI Provider", "提供商": "Provider",
+        "待办": "Todo", "今日待办": "Today's todos", "生成今日待办": "Suggest today's todos", "正在生成今日待办…": "Generating today's todos…", "AI 推荐": "AI suggestions", "推荐待办": "Suggested todos", "全部添加": "Add all", "新建待办，回车即可": "Add a todo, press Return", "暂无待办": "No todos", "已删除待办": "Todo deleted", "未完成（往日）": "Unfinished (earlier)", "今日已完成": "Done today", "绑定任务": "Link a task", "解除绑定": "Unlink", "已绑定到「%@」": "Linked to \"%@\"", "已解除绑定": "Unlinked", "已生成 %d 条推荐": "%d suggestion(s)", "暂无推荐": "No suggestions", "关联任务：%@": "Task: %@", "来源：AI": "From AI",
     ]
 
     static let es: [String: String] = [
@@ -392,6 +425,9 @@ public enum L {
         "截图": "Captura", "文件": "Archivo", "文件夹": "Carpeta",
         "网址": "URL",
         "任务提醒 · %@": "Recordatorio · %@", "(整理失败：%@)": "(Error al organizar: %@)", "%d 条已逾期": "%d vencidas", "框选截图（全局快捷键 %@）": "Capturar región (%@)", "%d 条": "%d elementos", "… 还有 %d 条": "…y %d más", "%d 次 · %@ tokens": "%d llamadas · %@ tokens",
+        "连接正常（%@）": "Conectado (%@)",
+        "AI 提供商": "Proveedor de IA", "提供商": "Proveedor",
+        "待办": "Pendientes", "今日待办": "Tareas de hoy", "生成今日待办": "Sugerir tareas de hoy", "正在生成今日待办…": "Generando tareas de hoy…", "AI 推荐": "Sugerencias de IA", "推荐待办": "Tareas sugeridas", "全部添加": "Añadir todo", "新建待办，回车即可": "Añade una tarea y pulsa Intro", "暂无待办": "Sin tareas", "已删除待办": "Tarea eliminada", "未完成（往日）": "Pendientes (anteriores)", "今日已完成": "Hechas hoy", "绑定任务": "Vincular tarea", "解除绑定": "Desvincular", "已绑定到「%@」": "Vinculada a «%@»", "已解除绑定": "Desvinculada", "已生成 %d 条推荐": "%d sugerencia(s)", "暂无推荐": "Sin sugerencias", "关联任务：%@": "Tarea: %@", "来源：AI": "De la IA",
     ]
 
     static let ja: [String: String] = [
@@ -482,6 +518,9 @@ public enum L {
         "截图": "スクショ", "文件": "ファイル", "文件夹": "フォルダ",
         "网址": "URL",
         "任务提醒 · %@": "タスク通知 · %@", "(整理失败：%@)": "（整理に失敗：%@）", "%d 条已逾期": "期限切れ %d 件", "框选截图（全局快捷键 %@）": "範囲をキャプチャ（%@）", "%d 条": "%d 件", "… 还有 %d 条": "…他 %d 件", "%d 次 · %@ tokens": "%d 回 · %@ トークン",
+        "连接正常（%@）": "接続OK（%@）",
+        "AI 提供商": "AI プロバイダー", "提供商": "プロバイダー",
+        "待办": "やること", "今日待办": "今日のやること", "生成今日待办": "今日のやることを提案", "正在生成今日待办…": "今日のやることを生成中…", "AI 推荐": "AI 提案", "推荐待办": "提案されたやること", "全部添加": "すべて追加", "新建待办，回车即可": "やることを入力して Return", "暂无待办": "やることなし", "已删除待办": "やることを削除", "未完成（往日）": "未完了（過去）", "今日已完成": "今日の完了", "绑定任务": "タスクを紐付け", "解除绑定": "紐付け解除", "已绑定到「%@」": "「%@」に紐付け", "已解除绑定": "紐付けを解除", "已生成 %d 条推荐": "%d 件の提案", "暂无推荐": "提案なし", "关联任务：%@": "タスク：%@", "来源：AI": "AI 由来",
     ]
 
     static let ko: [String: String] = [
@@ -572,5 +611,8 @@ public enum L {
         "截图": "스크린샷", "文件": "파일", "文件夹": "폴더",
         "网址": "URL",
         "任务提醒 · %@": "작업 알림 · %@", "(整理失败：%@)": "(정리 실패: %@)", "%d 条已逾期": "지남 %d개", "框选截图（全局快捷键 %@）": "영역 캡처 (%@)", "%d 条": "%d개", "… 还有 %d 条": "…외 %d개", "%d 次 · %@ tokens": "%d회 · %@ 토큰",
+        "连接正常（%@）": "연결 정상 (%@)",
+        "AI 提供商": "AI 제공자", "提供商": "제공자",
+        "待办": "할 일", "今日待办": "오늘 할 일", "生成今日待办": "오늘 할 일 추천", "正在生成今日待办…": "오늘 할 일 생성 중…", "AI 推荐": "AI 추천", "推荐待办": "추천 할 일", "全部添加": "모두 추가", "新建待办，回车即可": "할 일 입력 후 Return", "暂无待办": "할 일 없음", "已删除待办": "할 일 삭제됨", "未完成（往日）": "미완료(이전)", "今日已完成": "오늘 완료", "绑定任务": "작업 연결", "解除绑定": "연결 해제", "已绑定到「%@」": "「%@」에 연결됨", "已解除绑定": "연결 해제됨", "已生成 %d 条推荐": "%d개 추천", "暂无推荐": "추천 없음", "关联任务：%@": "작업: %@", "来源：AI": "AI 생성",
     ]
 }

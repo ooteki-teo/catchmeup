@@ -202,6 +202,48 @@ public struct ReminderLog: Identifiable, Codable, Sendable, Hashable {
     public var error: String?
 }
 
+// MARK: - Todo (daily to-do, optionally bound to a task)
+
+public enum TodoSource: String, Codable, Sendable {
+    case manual, ai
+}
+
+public struct Todo: Identifiable, Codable, Sendable, Hashable {
+    public var id: String
+    public var title: String
+    public var detail: String?
+    public var isDone: Bool
+    /// The calendar day this todo belongs to (normalized to start of day).
+    public var day: Date
+    public var source: TodoSource
+    /// Optional link to a task.
+    public var taskID: String?
+    public var createdAt: Date
+    public var completedAt: Date?
+
+    public init(id: String = UUID().uuidString,
+                title: String,
+                detail: String? = nil,
+                isDone: Bool = false,
+                day: Date = Calendar.current.startOfDay(for: Date()),
+                source: TodoSource = .manual,
+                taskID: String? = nil,
+                createdAt: Date = Date(),
+                completedAt: Date? = nil) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+        self.isDone = isDone
+        self.day = day
+        self.source = source
+        self.taskID = taskID
+        self.createdAt = createdAt
+        self.completedAt = completedAt
+    }
+
+    public var isToday: Bool { Calendar.current.isDateInToday(day) }
+}
+
 // MARK: - AI result types
 
 /// What the user wants from a piece of captured content.
@@ -265,8 +307,30 @@ public struct ExtractedTask: Codable, Sendable {
     }
 }
 
-public struct HandoffResult: Codable, Sendable {
-    public var goals: [String]
+/// A single AI-suggested todo.
+public struct SuggestedTodo: Codable, Sendable {
+    public var title: String
+    public var detail: String?
+    public var taskIndex: Int?
+
+    enum CodingKeys: String, CodingKey {
+        case title, detail
+        case taskIndex = "task_index"
+    }
+
+    public init(title: String, detail: String? = nil, taskIndex: Int? = nil) {
+        self.title = title
+        self.detail = detail
+        self.taskIndex = taskIndex
+    }
+}
+
+public struct TodoSuggestions: Codable, Sendable {
+    public var todos: [SuggestedTodo]
+    public init(todos: [SuggestedTodo] = []) { self.todos = todos }
+}
+
+public struct HandoffResult: Codable, Sendable {    public var goals: [String]
     public var logic: String
     public var progressSummary: String
     public var nextSteps: [String]

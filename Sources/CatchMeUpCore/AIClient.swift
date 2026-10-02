@@ -82,116 +82,42 @@ extension ChatMessage: Encodable {
 
 // MARK: - Client
 
-public struct DeepSeekClient: Sendable {
-    public var apiKey: String
-    public var baseURL: URL
-    public var model: String
+public struct AIClient: Sendable {
+    public var provider: any AIProvider
     /// Custom organizer system prompt. Empty/nil falls back to the built-in default.
     public var organizerPrompt: String?
     /// Custom hand-off system prompt. Empty/nil falls back to the built-in default.
     public var handoffPrompt: String?
 
-    public init(apiKey: String,
-                baseURL: URL = URL(string: "https://api.deepseek.com")!,
-                model: String = "deepseek-flash",
+    public init(provider: any AIProvider,
                 organizerPrompt: String? = nil,
                 handoffPrompt: String? = nil) {
-        self.apiKey = apiKey
-        self.baseURL = baseURL
-        self.model = model
+        self.provider = provider
         self.organizerPrompt = organizerPrompt
         self.handoffPrompt = handoffPrompt
     }
 
-    private struct RequestBody: Encodable {
-        struct ResponseFormat: Encodable { let type: String }
-        let model: String
-        let messages: [ChatMessage]
-        let temperature: Double
-        let max_tokens: Int
-        let stream: Bool
-        let response_format: ResponseFormat?
+    /// Convenience initializer for an OpenAI-compatible endpoint (default: DeepSeek).
+    public init(apiKey: String,
+                baseURL: URL = URL(string: "https://api.deepseek.com")!,
+                model: String = "deepseek-flash",
+                requiresAPIKey: Bool = true,
+                organizerPrompt: String? = nil,
+                handoffPrompt: String? = nil) {
+        self.provider = OpenAICompatibleProvider(apiKey: apiKey, baseURL: baseURL,
+                                                 model: model, requiresAPIKey: requiresAPIKey)
+        self.organizerPrompt = organizerPrompt
+        self.handoffPrompt = handoffPrompt
     }
 
-    private struct ResponseBody: Decodable {
-        struct Choice: Decodable {
-            struct Msg: Decodable { let content: String? }
-            let message: Msg
-            let finish_reason: String?
-        }
-        struct Usage: Decodable {
-            let prompt_tokens: Int?
-            let completion_tokens: Int?
-            let total_tokens: Int?
-        }
-        let choices: [Choice]
-        let usage: Usage?
-    }
-
-    /// Low-level chat completion with a small retry loop.
+    /// Low-level chat completion, delegated to the configured provider.
     public func chat(_ messages: [ChatMessage],
                      temperature: Double = 0.3,
                      maxTokens: Int = 8000,
                      jsonMode: Bool = true,
                      attempts: Int = 3) async throws -> String {
-        guard !apiKey.isEmpty else { throw CatchMeUpError.missingAPIKey }
-
-        let url = baseURL.appendingPathComponent("v1/chat/completions")
-
-        var lastError: Error = CatchMeUpError.api("unknown")
-        var effectiveMaxTokens = maxTokens
-        for attempt in 0..<max(1, attempts) {
-            do {
-                let body = RequestBody(
-                    model: model,
-                    messages: messages,
-                    temperature: temperature,
-                    max_tokens: effectiveMaxTokens,
-                    stream: false,
-                    response_format: jsonMode ? .init(type: "json_object") : nil
-                )
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.timeoutInterval = 120
-                request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
-                request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-                request.httpBody = try JSONEncoder().encode(body)
-
-                let (data, response) = try await URLSession.shared.data(for: request)
-                guard let http = response as? HTTPURLResponse else {
-                    throw CatchMeUpError.api(L.t("无 HTTP 响应"))
-                }
-                guard (200..<300).contains(http.statusCode) else {
-                    let text = String(data: data, encoding: .utf8) ?? ""
-                    throw CatchMeUpError.api("\(http.statusCode): \(text.prefix(300))")
-                }
-                let decoded = try JSONDecoder().decode(ResponseBody.self, from: data)
-                if let usage = decoded.usage {
-                    UsageTracker.shared.record(prompt: usage.prompt_tokens ?? 0,
-                                               completion: usage.completion_tokens ?? 0,
-                                               total: usage.total_tokens ?? 0,
-                                               model: model)
-                }
-                let choice = decoded.choices.first
-                if let content = choice?.message.content, !content.isEmpty {
-                    return content
-                }
-                // Reasoning models (deepseek-flash) spend tokens on reasoning_content first;
-                // an exhausted budget yields empty content with finish_reason "length".
-                if choice?.finish_reason == "length", effectiveMaxTokens < 32_000 {
-                    effectiveMaxTokens = min(effectiveMaxTokens * 2, 32_000)
-                    lastError = CatchMeUpError.invalidResponse(L.t("响应被截断，自动扩容重试"))
-                    continue
-                }
-                throw CatchMeUpError.invalidResponse(L.f("空响应（finish_reason=%@）", choice?.finish_reason ?? "unknown"))
-            } catch {
-                lastError = error
-                if attempt < attempts - 1 {
-                    await asyncDelay(pow(2.0, Double(attempt)) * 0.5)
-                }
-            }
-        }
-        throw lastError
+        try await provider.chat(messages, temperature: temperature, maxTokens: maxTokens,
+                                jsonMode: jsonMode, attempts: attempts)
     }
 
     // MARK: High-level helpers
@@ -282,6 +208,66 @@ public struct DeepSeekClient: Sendable {
             return parsed
         }
         return HandoffResult(progressSummary: String(raw.prefix(1500)))
+    }
+
+    // MARK: Todo suggestions
+
+    /// Ask the model for today's to-dos based on open tasks and hand-offs.
+    public func suggestTodos(tasks: [TaskItem],
+                             handoffItems: [Item],
+                             existing: [Todo],
+                             now: Date = Date()) async throws -> [SuggestedTodo] {
+        let nowISO = ISO8601DateFormatter.catchMeUp.string(from: now)
+        var lines: [String] = ["# \(L.pNow): \(nowISO)"]
+
+        lines.append("# \(L.todoTasksLabel):")
+        if tasks.isEmpty {
+            lines.append("(none)")
+        } else {
+            for (index, task) in tasks.enumerated() {
+                var line = "\(index). \(task.title)"
+                if let due = task.dueAt {
+                    line += " [\(FmtL.due(due))]"
+                }
+                lines.append(line)
+            }
+        }
+
+        lines.append("# \(L.todoHandoffsLabel):")
+        let nextSteps = handoffItems.flatMap { item -> [String] in
+            guard let handoff = item.handoff else { return [] }
+            return handoff.nextSteps
+        }
+        if nextSteps.isEmpty {
+            lines.append("(none)")
+        } else {
+            for step in nextSteps.prefix(20) { lines.append("- \(step)") }
+        }
+
+        lines.append("# \(L.todoExistingLabel):")
+        if existing.isEmpty {
+            lines.append("(none)")
+        } else {
+            for todo in existing.prefix(30) { lines.append("- \(todo.title)") }
+        }
+
+        let raw = try await chat([.system(L.todoSystem), .user(lines.joined(separator: "\n"))],
+                                 temperature: 0.5, maxTokens: 3000)
+        if let parsed = JSONExtractor.decode(TodoSuggestions.self, from: raw) {
+            return parsed.todos.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+        }
+        return []
+    }
+}
+
+/// Minimal date formatting usable from Core (no App-layer dependency).
+enum FmtL {
+    static func due(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = L.locale
+        f.dateStyle = .short
+        f.timeStyle = .short
+        return f.string(from: date)
     }
 }
 

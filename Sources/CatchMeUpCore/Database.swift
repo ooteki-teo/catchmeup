@@ -117,6 +117,18 @@ public final class Database: @unchecked Sendable {
             value TEXT,
             updated_at REAL NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS todos (
+            id TEXT PRIMARY KEY,
+            title TEXT NOT NULL,
+            detail TEXT,
+            is_done INTEGER NOT NULL DEFAULT 0,
+            day REAL NOT NULL,
+            source TEXT NOT NULL DEFAULT 'manual',
+            task_id TEXT,
+            created_at REAL NOT NULL,
+            completed_at REAL
+        );
+        CREATE INDEX IF NOT EXISTS idx_todos_day ON todos(day);
         CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind);
         CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
         CREATE INDEX IF NOT EXISTS idx_tasks_due_at ON tasks(due_at);
@@ -453,5 +465,54 @@ extension Database {
 
     public func getSetting(_ key: String) throws -> String? {
         try query("SELECT value FROM settings_kv WHERE key = ?", [.text(key)]).first?["value"]?.stringValue
+    }
+
+    // MARK: Todos
+
+    @discardableResult
+    public func insertTodo(_ todo: Todo) throws -> Todo {
+        try run("""
+        INSERT INTO todos (id, title, detail, is_done, day, source, task_id, created_at, completed_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, todoParams(todo))
+        return todo
+    }
+
+    public func updateTodo(_ todo: Todo) throws {
+        try run("""
+        UPDATE todos SET title = ?, detail = ?, is_done = ?, day = ?, source = ?,
+                         task_id = ?, created_at = ?, completed_at = ?
+        WHERE id = ?
+        """, Array(todoParams(todo).dropFirst()) + [.text(todo.id)])
+    }
+
+    public func deleteTodo(id: String) throws {
+        try run("DELETE FROM todos WHERE id = ?", [.text(id)])
+    }
+
+    public func todos(limit: Int = 500) throws -> [Todo] {
+        try query("SELECT * FROM todos ORDER BY day DESC, created_at ASC LIMIT ?", [.int(Int64(limit))]).map(mapTodo)
+    }
+
+    private func todoParams(_ t: Todo) -> [SQLValue] {
+        [
+            .text(t.id), .text(t.title), .text(t.detail ?? ""),
+            .int(t.isDone ? 1 : 0), .double(t.day.timeIntervalSince1970),
+            .text(t.source.rawValue), .text(t.taskID ?? ""),
+            .double(t.createdAt.timeIntervalSince1970),
+            t.completedAt.map { .double($0.timeIntervalSince1970) } ?? .null
+        ]
+    }
+
+    private func mapTodo(_ row: [String: SQLValue]) -> Todo {
+        Todo(id: row["id"]?.stringValue ?? UUID().uuidString,
+             title: row["title"]?.stringValue ?? "",
+             detail: row["detail"]?.stringValue?.isEmpty == true ? nil : row["detail"]?.stringValue,
+             isDone: row["is_done"]?.boolValue ?? false,
+             day: date(row["day"]) ?? Date(),
+             source: TodoSource(rawValue: row["source"]?.stringValue ?? "manual") ?? .manual,
+             taskID: row["task_id"]?.stringValue?.isEmpty == true ? nil : row["task_id"]?.stringValue,
+             createdAt: date(row["created_at"]) ?? Date(),
+             completedAt: date(row["completed_at"]))
     }
 }

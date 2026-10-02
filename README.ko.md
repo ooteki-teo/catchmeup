@@ -16,7 +16,7 @@ CatchMeUp은 **단일 파일 네이티브 macOS 앱**(SwiftUI + Swift 6)입니�
 - 전역 단축키(기본 `⌘⇧M`, **변경 가능**): 어디서든 영역 선택 → 앱이 앞으로 나와 분석합니다.
 
 ### AI 정리 (DeepSeek)
-- 기본 모델 `deepseek-flash`(이미지 지원). `deepseek-v4-pro`로 전환 가능.
+- 여러 AI 제공자 지원: **DeepSeek(기본)**, OpenAI, OpenRouter, Moonshot, Ollama 또는 OpenAI 호환 엔드포인트. 기본 모델 `deepseek-flash`(이미지 지원).
 - 제목·요약·태그·분류와 함께 두 가지 구조화 결과 생성:
   - **작업**: 명확한 마감이 있는 할 일;
   - **인수인계**: 프로젝트 정리(목표 / 접근 / 상세 진행 / 다음 단계 / 위험).

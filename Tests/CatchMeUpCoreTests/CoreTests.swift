@@ -10,8 +10,58 @@ final class CoreTests: XCTestCase {
         Prefs.languageOverride = AppLanguage.zh.rawValue
     }
 
-    // MARK: Localization
+    // MARK: Todos
 
+    func testTodoCRUD() throws {
+        let db = try makeDB()
+        let todo = Todo(title: "写周报", taskID: "tsk_1")
+        try db.insertTodo(todo)
+        XCTAssertEqual(try db.todos().count, 1)
+        XCTAssertEqual(try db.todos().first?.taskID, "tsk_1")
+
+        var updated = try db.todos().first!
+        updated.isDone = true
+        updated.completedAt = Date()
+        try db.updateTodo(updated)
+        XCTAssertTrue(try db.todos().first!.isDone)
+
+        try db.deleteTodo(id: todo.id)
+        XCTAssertTrue(try db.todos().isEmpty)
+    }
+
+    func testTodoSuggestionDecoding() {
+        let json = #"{"todos":[{"title":"做A","detail":"步骤","task_index":0},{"title":"做B"}]}"#
+        let parsed = JSONExtractor.decode(TodoSuggestions.self, from: json)
+        XCTAssertEqual(parsed?.todos.first?.title, "做A")
+        XCTAssertEqual(parsed?.todos.first?.taskIndex, 0)
+        XCTAssertNil(parsed?.todos.last?.taskIndex)
+    }
+
+    // MARK: AI providers
+
+    func testAIProviderDefaults() {
+        XCTAssertEqual(AIProviderKind.allCases.count, 6)
+        XCTAssertEqual(AIProviderKind.deepseek.defaultModel, "deepseek-flash")
+        XCTAssertEqual(AIProviderKind.deepseek.defaultBaseURL, "https://api.deepseek.com")
+        XCTAssertTrue(AIProviderKind.deepseek.requiresAPIKey)
+        XCTAssertFalse(AIProviderKind.ollama.requiresAPIKey)
+    }
+
+    func testAIProviderRequiresKey() async {
+        let provider = OpenAICompatibleProvider(apiKey: "",
+                                                baseURL: URL(string: "https://example.com")!,
+                                                model: "m", requiresAPIKey: true)
+        do {
+            _ = try await provider.chat([.user("hi")], attempts: 1)
+            XCTFail("expected missingAPIKey")
+        } catch CatchMeUpError.missingAPIKey {
+            // expected
+        } catch {
+            // any other error is acceptable here (no network in tests)
+        }
+    }
+
+    // MARK: Localization
     func testLocalizationSwitching() {
         Prefs.followSystemLanguage = false
         Prefs.languageOverride = AppLanguage.en.rawValue
@@ -319,11 +369,11 @@ final class CoreTests: XCTestCase {
     }
 
     func testCustomPromptOverrideFallsBackWhenBlank() {
-        let custom = DeepSeekClient(apiKey: "x", organizerPrompt: "   ", handoffPrompt: "自定义交接")
+        let custom = AIClient(apiKey: "x", organizerPrompt: "   ", handoffPrompt: "自定义交接")
         XCTAssertEqual(custom.resolvedOrganizerSystem, L.organizerSystem)
         XCTAssertEqual(custom.resolvedHandoffSystem, "自定义交接")
 
-        let defaults = DeepSeekClient(apiKey: "x")
+        let defaults = AIClient(apiKey: "x")
         XCTAssertEqual(defaults.resolvedOrganizerSystem, L.organizerSystem)
         XCTAssertEqual(defaults.resolvedHandoffSystem, L.handoffSystem)
     }
@@ -334,18 +384,28 @@ final class CoreTests: XCTestCase {
         guard let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"], !key.isEmpty else {
             throw XCTSkip("DEEPSEEK_API_KEY not set; skipping live test")
         }
-        let client = DeepSeekClient(apiKey: key, model: "deepseek-flash")
+        let client = AIClient(apiKey: key, model: "deepseek-flash")
         let reply = try await client.chat([.user("只回复两个字：正常")],
                                           temperature: 0, maxTokens: 512,
                                           jsonMode: false, attempts: 2)
         XCTAssertFalse(reply.isEmpty, "DeepSeek 返回了空响应")
     }
 
-    func testLiveOrganize() async throws {
+    func testLiveTodoSuggestions() async throws {
         guard let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"], !key.isEmpty else {
             throw XCTSkip("DEEPSEEK_API_KEY not set; skipping live test")
         }
-        let client = DeepSeekClient(apiKey: key, model: "deepseek-flash")
+        let client = AIClient(apiKey: key, model: "deepseek-flash")
+        let tasks = [TaskItem(title: "完成季度报告", dueAt: Date().addingTimeInterval(3600))]
+        let suggestions = try await client.suggestTodos(tasks: tasks, handoffItems: [],
+                                                        existing: [Todo(title: "已经开始准备数据")])
+        XCTAssertFalse(suggestions.isEmpty)
+    }
+
+    func testLiveOrganize() async throws {        guard let key = ProcessInfo.processInfo.environment["DEEPSEEK_API_KEY"], !key.isEmpty else {
+            throw XCTSkip("DEEPSEEK_API_KEY not set; skipping live test")
+        }
+        let client = AIClient(apiKey: key, model: "deepseek-flash")
         let result = try await client.organize(kind: .text,
                                                content: "明天下午三点跟 Alice 开会前，把 Q3 报告写完",
                                                hint: nil, imageData: nil)

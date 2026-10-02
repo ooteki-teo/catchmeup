@@ -16,7 +16,7 @@ CatchMeUp es una **app nativa de un solo archivo** (SwiftUI + Swift 6). Sin Elec
 - Atajo global (por defecto `⌘⇧M`, **configurable**): selecciona una región desde cualquier lugar → la app pasa al frente y la analiza.
 
 ### Organización con IA (DeepSeek)
-- Modelo por defecto `deepseek-flash` (admite imágenes); puedes cambiar a `deepseek-v4-pro`.
+- Varios proveedores: **DeepSeek (por defecto)**, OpenAI, OpenRouter, Moonshot, Ollama o cualquier endpoint compatible con OpenAI. Modelo por defecto `deepseek-flash`.
 - Genera título, resumen, etiquetas, categoría y dos resultados estructurados:
   - **Tareas**: pendientes con fecha límite explícita;
   - **Handoff**: resumen del proyecto (objetivos / enfoque / progreso detallado / siguientes pasos / riesgos).

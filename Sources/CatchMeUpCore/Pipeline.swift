@@ -4,12 +4,12 @@ import Foundation
 @MainActor
 public final class Pipeline {
     public let db: Database
-    public let client: DeepSeekClient
+    public let client: AIClient
     public let scheduler: ReminderScheduler
     public let calendar: CalendarService
 
     public init(db: Database,
-                client: DeepSeekClient,
+                client: AIClient,
                 scheduler: ReminderScheduler,
                 calendar: CalendarService) {
         self.db = db
@@ -317,6 +317,39 @@ public final class Pipeline {
         closed.status = .handed_off
         try db.updateSession(closed)
         return (closed, handoff)
+    }
+
+    // MARK: Todos
+
+    public func todos() throws -> [Todo] { try db.todos() }
+
+    @discardableResult
+    public func createTodo(title: String,
+                           detail: String? = nil,
+                           source: TodoSource = .manual,
+                           taskID: String? = nil,
+                           day: Date = Calendar.current.startOfDay(for: Date())) throws -> Todo {
+        let todo = Todo(title: title, detail: detail, day: day, source: source, taskID: taskID)
+        try db.insertTodo(todo)
+        return todo
+    }
+
+    public func updateTodo(_ todo: Todo) throws {
+        var updated = todo
+        if updated.isDone && updated.completedAt == nil { updated.completedAt = Date() }
+        if !updated.isDone { updated.completedAt = nil }
+        try db.updateTodo(updated)
+    }
+
+    public func deleteTodo(_ todo: Todo) throws { try db.deleteTodo(id: todo.id) }
+
+    /// AI-suggested todos from open tasks + hand-offs. Returns suggestions plus
+    /// the task list they were derived from (so task_index can be resolved).
+    public func suggestTodos(existing: [Todo], now: Date = Date()) async throws -> (suggestions: [SuggestedTodo], tasks: [TaskItem]) {
+        let tasks = try db.tasks(includeCompleted: false, limit: 100)
+        let items = try db.items(limit: 30)
+        let suggestions = try await client.suggestTodos(tasks: tasks, handoffItems: items, existing: existing, now: now)
+        return (suggestions, tasks)
     }
 
     // MARK: Dashboard stats

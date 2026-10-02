@@ -12,7 +12,7 @@ struct RootView: View {
         NavigationSplitView {
             VStack(spacing: 0) {
                 List(selection: selectionBinding) {
-                    ForEach([AppStore.Section.workspace, .tasks, .handoff, .calendar, .jobs]) { section in
+                    ForEach([AppStore.Section.workspace, .todos, .tasks, .handoff, .calendar, .jobs]) { section in
                         Label(section.title, systemImage: section.icon).tag(section)
                     }
                     Section {
@@ -43,6 +43,7 @@ struct RootView: View {
     private var detail: some View {
         switch store.selection {
         case .workspace: WorkspaceView()
+        case .todos: TodoView()
         case .tasks: TasksView()
         case .handoff: HandoffView()
         case .calendar: CalendarView()
@@ -53,7 +54,10 @@ struct RootView: View {
 
     private var healthFooter: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HealthRow(label: "DeepSeek", ok: !(Prefs.apiKey ?? "").isEmpty, okText: Prefs.model, badText: L.t("未配置 Key"))
+            HealthRow(label: AIProviderSettings.kind.displayName,
+                      ok: store.aiConfigured,
+                      okText: AIProviderSettings.model(for: AIProviderSettings.kind),
+                      badText: L.t("未配置 Key"))
             HealthRow(label: L.t("通知"), ok: store.notificationsAuthorized, okText: L.t("已授权"), badText: L.t("未授权"))
             HealthRow(label: L.t("日历"), ok: store.calendarAuthorized, okText: L.t("已授权"), badText: L.t("未授权"))
         }

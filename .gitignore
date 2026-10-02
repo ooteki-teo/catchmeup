@@ -1,0 +1,32 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# SwiftPM / Xcode build output
+.build/
+.build-xcode/
+.swiftpm/
+DerivedData/
+*.xcodeproj
+*.xcworkspace
+xcuserdata/
+*.xcuserstate
+*.moved-aside
+
+# App bundle / generated assets
+dist/
+artifacts/
+
+# Secrets & local runtime data
+.env
+*.env
+secrets.json
+usage.json
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log

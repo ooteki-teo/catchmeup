@@ -10,7 +10,7 @@ struct SettingsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 Text(L.t("模型、权限与提醒设置")).foregroundStyle(.secondary)
-                deepseekCard
+                aiCard
                 reminderCard
                 permissionsCard
                 languageCard
@@ -28,27 +28,35 @@ struct SettingsView: View {
 
     // MARK: Cards
 
-    private var deepseekCard: some View {
-        Card(title: "DeepSeek") {
+    private var aiCard: some View {
+        Card(title: L.t("AI 提供商")) {
             HStack {
-                Text("API Key").frame(width: 90, alignment: .leading)
-                SecureField("sk-...", text: $store.apiKeyInput)
-                    .textFieldStyle(.roundedBorder)
-            }
-            Text(L.t("保存在本机应用目录的 secrets.json（仅当前用户可读），不使用系统钥匙串，因此不会弹授权。"))
-                .font(.caption2).foregroundStyle(.secondary)
-
-            HStack {
-                Text(L.t("模型")).frame(width: 90, alignment: .leading)
-                Picker("", selection: $store.modelInput) {
-                    Text(L.t("deepseek-flash（支持图片，推荐）")).tag("deepseek-flash")
-                    Text(L.t("deepseek-v4-pro（纯文本）")).tag("deepseek-v4-pro")
+                Text(L.t("提供商")).frame(width: 90, alignment: .leading)
+                Picker("", selection: Binding(
+                    get: { store.providerInput },
+                    set: { store.loadProviderFields($0) }
+                )) {
+                    ForEach(AIProviderKind.allCases) { Text($0.displayName).tag($0) }
                 }
                 .labelsHidden()
             }
+            if store.providerNeedsAPIKey {
+                HStack {
+                    Text("API Key").frame(width: 90, alignment: .leading)
+                    SecureField("sk-...", text: $store.apiKeyInput)
+                        .textFieldStyle(.roundedBorder)
+                }
+                Text(L.t("保存在本机应用目录的 secrets.json（仅当前用户可读），不使用系统钥匙串，因此不会弹授权。"))
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            HStack {
+                Text(L.t("模型")).frame(width: 90, alignment: .leading)
+                TextField(store.providerInput.defaultModel, text: $store.modelInput)
+                    .textFieldStyle(.roundedBorder)
+            }
             HStack {
                 Text("Base URL").frame(width: 90, alignment: .leading)
-                TextField("https://api.deepseek.com", text: $store.baseURLInput)
+                TextField(store.providerInput.defaultBaseURL, text: $store.baseURLInput)
                     .textFieldStyle(.roundedBorder)
             }
             HStack {

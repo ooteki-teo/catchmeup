@@ -68,6 +68,12 @@ public enum Prefs {
         set { defaults.set(newValue, forKey: "launchAtLogin") }
     }
 
+    /// Selected AI provider kind (raw value). Default: deepseek.
+    public static var providerRaw: String {
+        get { defaults.string(forKey: "provider") ?? "deepseek" }
+        set { defaults.set(newValue, forKey: "provider") }
+    }
+
     /// Screenshot global hot key (Carbon key code). Default: M (46).
     public static var screenshotKeyCode: Int {
         get { defaults.object(forKey: "screenshotKeyCode") as? Int ?? 46 }
@@ -82,8 +88,7 @@ public enum Prefs {
 
     // MARK: Language
 
-    public static var followSystemLanguage: Bool {
-        get { defaults.object(forKey: "followSystemLanguage") as? Bool ?? true }
+    public static var followSystemLanguage: Bool {        get { defaults.object(forKey: "followSystemLanguage") as? Bool ?? true }
         set { defaults.set(newValue, forKey: "followSystemLanguage") }
     }
 

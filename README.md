@@ -16,7 +16,7 @@ CatchMeUp 是一个**单文件原生 macOS 应用**（SwiftUI + Swift 6），不
 - 全局热键（默认 `⌘⇧M`，**可自定义**）：任意界面框选截图 → 自动唤起 App 并分析。
 
 ### AI 整理（DeepSeek）
-- 默认模型 `deepseek-flash`（支持图片输入）；也可切换 `deepseek-v4-pro`。
+- 支持多家 AI 提供商：**DeepSeek（默认）**、OpenAI、OpenRouter、Moonshot、Ollama，或任意 OpenAI 兼容端点；默认模型 `deepseek-flash`（支持图片）。
 - 自动产出：标题、摘要、标签、分类，以及两种结构化结果：
   - **任务**：带明确时间点的待办；
   - **交接**：项目梳理（目标 / 整体逻辑 / 详细过程 / 接下来做什么 / 风险）。

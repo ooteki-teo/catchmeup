@@ -16,7 +16,7 @@ CatchMeUp is a **single-file native macOS app** (SwiftUI + Swift 6). No Electron
 - Global hotkey (default `⌘⇧M`, **configurable**): select a region from anywhere → the app comes to front and analyzes it.
 
 ### AI organization (DeepSeek)
-- Default model `deepseek-flash` (image input); switch to `deepseek-v4-pro` if you prefer.
+- Multiple AI providers: **DeepSeek (default)**, OpenAI, OpenRouter, Moonshot, Ollama, or any OpenAI-compatible endpoint. Default model `deepseek-flash` (image input).
 - Produces a title, summary, tags, category, and two structured results:
   - **Tasks**: to-dos with explicit deadlines;
   - **Handoff**: a project recap (goals / approach / detailed progress / next steps / risks).
